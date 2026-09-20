@@ -372,7 +372,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                 enemyX = enemyX.coerceIn(0.16f, 0.84f)
                 enemyY += 0.0007f
 
-                val flightSpeed = 0.0028f + stats.speed * 0.0007f
+                val flightSpeed = 0.0060f + stats.speed * 0.0012f
                 shipX = (shipX + joystickX * flightSpeed).coerceIn(0.12f, 0.88f)
                 shipY = (shipY + joystickY * flightSpeed).coerceIn(0.38f, 0.86f)
 
