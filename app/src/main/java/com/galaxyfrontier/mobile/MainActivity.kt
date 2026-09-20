@@ -402,6 +402,14 @@ private fun CombatField(
     enemyY: Float,
     enemyHp: Int
 ) {
+    val infinite = rememberInfiniteTransition(label = "combatFx")
+    val pulse by infinite.animateFloat(
+        initialValue = 0.7f,
+        targetValue = 1.15f,
+        animationSpec = infiniteRepeatable(tween(550), RepeatMode.Reverse),
+        label = "pulse"
+    )
+
     Canvas(Modifier.fillMaxSize()) {
         val ship = Offset(size.width * shipX, size.height * shipY)
         val enemy = Offset(size.width * enemyX, size.height * enemyY)
@@ -416,14 +424,16 @@ private fun CombatField(
             )
         }
 
+        // Energy field around the enemy.
         drawCircle(
             brush = Brush.radialGradient(
                 listOf(Violet.copy(alpha = 0.28f), Color.Transparent)
             ),
-            radius = 62f,
+            radius = 68f * pulse,
             center = enemy
         )
 
+        // Enemy ship.
         val enemyPath = androidx.compose.ui.graphics.Path().apply {
             moveTo(enemy.x, enemy.y - 32f)
             lineTo(enemy.x - 27f, enemy.y + 20f)
@@ -434,17 +444,38 @@ private fun CombatField(
         drawPath(enemyPath, brush = Brush.verticalGradient(listOf(Color(0xFFFF718C), Violet)))
         drawPath(enemyPath, color = White.copy(alpha = 0.65f), style = Stroke(2f))
 
+        // Enemy health pips.
         repeat(enemyHp) { i ->
-            drawRect(
+            drawRoundRect(
                 color = NeonCyan,
-                topLeft = Offset(enemy.x - 24f + i * 16f, enemy.y - 47f),
-                size = Size(12f, 3f)
+                topLeft = Offset(enemy.x - 25f + i * 17f, enemy.y - 48f),
+                size = Size(13f, 4f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(2f)
             )
         }
 
+        // Target reticle.
         drawCircle(
-            brush = Brush.radialGradient(listOf(NeonCyan, ElectricBlue, Color.Transparent)),
-            radius = 30f,
+            color = NeonCyan.copy(alpha = 0.42f),
+            radius = 43f,
+            center = enemy,
+            style = Stroke(1.5f)
+        )
+        drawLine(
+            color = NeonCyan.copy(alpha = 0.65f),
+            start = Offset(enemy.x - 53f, enemy.y),
+            end = Offset(enemy.x - 34f, enemy.y)
+        )
+        drawLine(
+            color = NeonCyan.copy(alpha = 0.65f),
+            start = Offset(enemy.x + 34f, enemy.y),
+            end = Offset(enemy.x + 53f, enemy.y)
+        )
+
+        // Player ship glow.
+        drawCircle(
+            brush = Brush.radialGradient(listOf(NeonCyan.copy(alpha = 0.28f), Color.Transparent)),
+            radius = 38f,
             center = ship
         )
 
@@ -460,6 +491,20 @@ private fun CombatField(
         drawPath(shipPath, brush = Brush.verticalGradient(listOf(White, ElectricBlue, Violet)))
         drawPath(shipPath, color = NeonCyan, style = Stroke(2f))
 
+        // Engine trails.
+        drawLine(
+            color = ElectricBlue.copy(alpha = 0.8f),
+            start = Offset(ship.x - 8f, ship.y + 25f),
+            end = Offset(ship.x - 8f, ship.y + 48f),
+            strokeWidth = 5f
+        )
+        drawLine(
+            color = Violet.copy(alpha = 0.75f),
+            start = Offset(ship.x + 8f, ship.y + 25f),
+            end = Offset(ship.x + 8f, ship.y + 48f),
+            strokeWidth = 5f
+        )
+
         drawCircle(
             color = SpaceBlack,
             radius = 7f,
@@ -473,94 +518,3 @@ private fun CombatField(
     }
 }
 
-@Composable
-private fun HudChip(text: String) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(White.copy(alpha = 0.07f))
-            .border(1.dp, White.copy(alpha = 0.12f), RoundedCornerShape(12.dp))
-            .padding(horizontal = 12.dp, vertical = 8.dp)
-    ) {
-        Text(text, color = NeonCyan, fontSize = 11.sp, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun HudBar(
-    label: String,
-    value: Float,
-    color: Color,
-    modifier: Modifier
-) {
-    Column(modifier) {
-        Text(label, color = White.copy(alpha = 0.45f), fontSize = 8.sp, letterSpacing = 1.sp)
-        Spacer(Modifier.height(4.dp))
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(5.dp)
-                .clip(RoundedCornerShape(5.dp))
-                .background(White.copy(alpha = 0.08f))
-        ) {
-            Box(
-                Modifier
-                    .fillMaxWidth(value)
-                    .height(5.dp)
-                    .clip(RoundedCornerShape(5.dp))
-                    .background(color)
-            )
-        }
-    }
-}
-
-@Composable
-private fun ShipPreview() {
-    val infinite = rememberInfiniteTransition(label = "ship")
-    val bob by infinite.animateFloat(
-        initialValue = -7f,
-        targetValue = 7f,
-        animationSpec = infiniteRepeatable(tween(1500), RepeatMode.Reverse),
-        label = "bob"
-    )
-
-    Canvas(Modifier.size(210.dp).alpha(0.98f)) {
-        val cx = size.width / 2f
-        val cy = size.height / 2f + bob
-
-        drawCircle(
-            brush = Brush.radialGradient(
-                listOf(ElectricBlue.copy(alpha = 0.22f), Color.Transparent)
-            ),
-            radius = 92f,
-            center = androidx.compose.ui.geometry.Offset(cx, cy + 15f)
-        )
-
-        val ship = androidx.compose.ui.geometry.Path().apply {
-            moveTo(cx, cy - 76f)
-            lineTo(cx - 44f, cy + 48f)
-            lineTo(cx - 8f, cy + 34f)
-            lineTo(cx, cy + 58f)
-            lineTo(cx + 8f, cy + 34f)
-            lineTo(cx + 44f, cy + 48f)
-            close()
-        }
-
-        drawPath(
-            ship,
-            brush = Brush.verticalGradient(listOf(White, ElectricBlue, Violet))
-        )
-        drawPath(ship, color = ElectricBlue.copy(alpha = 0.7f), style = Stroke(2.5f))
-
-        drawCircle(
-            color = SpaceBlack,
-            radius = 13f,
-            center = androidx.compose.ui.geometry.Offset(cx, cy - 27f)
-        )
-        drawCircle(
-            color = NeonCyan.copy(alpha = 0.9f),
-            radius = 7f,
-            center = androidx.compose.ui.geometry.Offset(cx, cy - 27f)
-        )
-    }
-}
