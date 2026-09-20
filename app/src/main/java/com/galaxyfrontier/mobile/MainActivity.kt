@@ -291,6 +291,8 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
     var energy by remember { mutableFloatStateOf(stats.energy.toFloat()) }
     var fireCooldown by remember { mutableFloatStateOf(0f) }
     var enemyHitFlash by remember { mutableFloatStateOf(0f) }
+    var shipHitFlash by remember { mutableFloatStateOf(0f) }
+    var shieldHitFlash by remember { mutableFloatStateOf(0f) }
     var joystickX by remember { mutableFloatStateOf(0f) }
     var joystickY by remember { mutableFloatStateOf(0f) }
     var message by remember { mutableStateOf("INIMIGO DETECTADO") }
@@ -375,6 +377,8 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
             energy = (energy + 0.0008f).coerceAtMost(stats.energy.toFloat())
             fireCooldown = (fireCooldown - 0.025f).coerceAtLeast(0f)
             enemyHitFlash = (enemyHitFlash - 0.08f).coerceAtLeast(0f)
+            shipHitFlash = (shipHitFlash - 0.07f).coerceAtLeast(0f)
+            shieldHitFlash = (shieldHitFlash - 0.06f).coerceAtLeast(0f)
             val now = System.currentTimeMillis()
             explosions.removeAll { now - it.createdAt > 520L }
 
@@ -385,8 +389,14 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                 enemyY = 0.18f
                 enemyX = Random.nextFloat() * 0.68f + 0.16f
                 streak = 0
+                shieldHitFlash = 1f
                 shield = (shield - 0.08f).coerceAtLeast(0f)
-                if (shield <= 0f) hull = (hull - 0.06f).coerceAtLeast(0f)
+                if (shield <= 0f) {
+                    hull = (hull - 0.06f).coerceAtLeast(0f)
+                    shipHitFlash = 1f
+                } else {
+                    shipHitFlash = 0.65f
+                }
                 if (hull <= 0f) { combatEnded = true; projectiles.clear(); message = "NAVE DESTRUÍDA"; onBack() } else { message = "ALERTA" }
             }
         }
@@ -453,7 +463,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                     .clip(RoundedCornerShape(24.dp))
             ) {
                 CombatField(
-                    shipX, shipY, enemyX, enemyY, enemyHp, mission.enemyHp, enemyHitFlash, projectiles, explosions
+                    shipX, shipY, enemyX, enemyY, enemyHp, mission.enemyHp, enemyHitFlash, shipHitFlash, shieldHitFlash, projectiles, explosions
                 )
 
                 // Controle de voo dedicado: não bloqueia o botão de tiro.
@@ -811,6 +821,8 @@ private fun CombatField(
     enemyHp: Int,
     maxEnemyHp: Int,
     enemyHitFlash: Float,
+    shipHitFlash: Float,
+    shieldHitFlash: Float,
     projectiles: List<Projectile>,
     explosions: List<Explosion>
 ) {
@@ -888,6 +900,22 @@ private fun CombatField(
             drawCircle(Violet.copy(alpha = alpha * 0.5f), radius * 0.65f, point, style = Stroke(2f))
         }
 
+        if (shieldHitFlash > 0f) {
+            drawCircle(
+                color = NeonCyan.copy(alpha = shieldHitFlash * 0.32f),
+                radius = 58f + shieldHitFlash * 12f,
+                center = ship,
+                style = Stroke(4f)
+            )
+        }
+        if (shipHitFlash > 0f) {
+            drawCircle(
+                color = White.copy(alpha = shipHitFlash * 0.55f),
+                radius = 48f + shipHitFlash * 18f,
+                center = ship,
+                style = Stroke(5f)
+            )
+        }
         drawCircle(
             brush = Brush.radialGradient(listOf(NeonCyan.copy(alpha = 0.28f), Color.Transparent)),
             radius = 38f,
