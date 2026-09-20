@@ -61,6 +61,7 @@ private enum class Screen { MENU, GAME, SHIP, REWARD }
 
 private data class Projectile(var x: Float, var y: Float, val targetX: Float, val targetY: Float)
 private data class Explosion(val x: Float, val y: Float, val createdAt: Long)
+private data class ShipStats(var hull: Int = 1, var shield: Int = 1, var energy: Int = 1, var damage: Int = 1, var speed: Int = 1)
 
 private val SpaceBlack = Color(0xFF030511)
 private val DeepBlue = Color(0xFF08133A)
@@ -84,6 +85,8 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun GalaxyFrontierApp() {
     var screen by remember { mutableStateOf(Screen.MENU) }
+    val shipStats = remember { mutableStateOf(ShipStats()) }
+    var credits by remember { mutableIntStateOf(125) }
 
     AnimatedContent(
         targetState = screen,
@@ -92,8 +95,8 @@ private fun GalaxyFrontierApp() {
     ) { current ->
         when (current) {
             Screen.MENU -> MainMenu(onPlay = { screen = Screen.GAME }, onShip = { screen = Screen.SHIP })
-            Screen.GAME -> PrototypeGame(onBack = { screen = Screen.MENU }, onMissionComplete = { screen = Screen.REWARD })
-            Screen.SHIP -> ShipScreen(onBack = { screen = Screen.MENU })
+            Screen.GAME -> PrototypeGame(stats = shipStats.value, onBack = { screen = Screen.MENU }, onMissionComplete = { screen = Screen.REWARD })
+            Screen.SHIP -> ShipScreen(stats = shipStats.value, credits = credits, onSpend = { credits = it }, onBack = { screen = Screen.MENU })
             Screen.REWARD -> MissionReward(onBack = { screen = Screen.MENU }, onReplay = { screen = Screen.GAME })
         }
     }
@@ -255,21 +258,21 @@ private fun MenuButton(
 }
 
 @Composable
-private fun PrototypeGame(onBack: () -> Unit, onMissionComplete: () -> Unit) {
+private fun PrototypeGame(stats: ShipStats, onBack: () -> Unit, onMissionComplete: () -> Unit) {
     var shipX by remember { mutableFloatStateOf(0.5f) }
     var shipY by remember { mutableFloatStateOf(0.72f) }
     var enemyX by remember { mutableFloatStateOf(0.5f) }
     var enemyY by remember { mutableFloatStateOf(0.25f) }
     var enemyHp by remember { mutableIntStateOf(3) }
-    var hull by remember { mutableFloatStateOf(1f) }
-    var shield by remember { mutableFloatStateOf(1f) }
+    var hull by remember { mutableFloatStateOf(stats.hull.toFloat()) }
+    var shield by remember { mutableFloatStateOf(stats.shield.toFloat()) }
     var shots by remember { mutableIntStateOf(0) }
     var kills by remember { mutableIntStateOf(0) }
     var xp by remember { mutableIntStateOf(0) }
     var level by remember { mutableIntStateOf(1) }
     var credits by remember { mutableIntStateOf(0) }
     var streak by remember { mutableIntStateOf(0) }
-    var energy by remember { mutableFloatStateOf(1f) }
+    var energy by remember { mutableFloatStateOf(stats.energy.toFloat()) }
     var fireCooldown by remember { mutableFloatStateOf(0f) }
     var message by remember { mutableStateOf("INIMIGO DETECTADO") }
     val projectiles = remember { mutableStateListOf<Projectile>() }
@@ -285,7 +288,7 @@ private fun PrototypeGame(onBack: () -> Unit, onMissionComplete: () -> Unit) {
                 if (distance < 0.018f) {
                     explosions.add(Explosion(p.targetX, p.targetY, System.currentTimeMillis()))
                     if (enemyHp > 0) {
-                        enemyHp--
+                        enemyHp -= stats.damage
                         message = "IMPACTO!"
                         if (enemyHp <= 0) {
                             kills++
@@ -295,7 +298,7 @@ private fun PrototypeGame(onBack: () -> Unit, onMissionComplete: () -> Unit) {
                             if (xp >= level * 100) {
                                 xp -= level * 100
                                 level++
-                                energy = 1f
+                                energy = stats.energy.toFloat()
                                 message = "NÍVEL $level • +25 CRÉDITOS"
                             } else {
                                 message = "ALVO DESTRUÍDO • +25"
@@ -319,7 +322,7 @@ private fun PrototypeGame(onBack: () -> Unit, onMissionComplete: () -> Unit) {
                 val dy = p.targetY - p.y
                 sqrt(dx * dx + dy * dy) < 0.02f
             }
-            energy = (energy + 0.0008f).coerceAtMost(1f)
+            energy = (energy + 0.0008f).coerceAtMost(stats.energy.toFloat())
             fireCooldown = (fireCooldown - 0.025f).coerceAtLeast(0f)
             val now = System.currentTimeMillis()
             explosions.removeAll { now - it.createdAt > 520L }
@@ -394,8 +397,8 @@ private fun PrototypeGame(onBack: () -> Unit, onMissionComplete: () -> Unit) {
                     .pointerInput(Unit) {
                         detectDragGestures { change, dragAmount ->
                             change.consume()
-                            shipX = (shipX + dragAmount.x / size.width).coerceIn(0.12f, 0.88f)
-                            shipY = (shipY + dragAmount.y / size.height).coerceIn(0.30f, 0.86f)
+                            shipX = (shipX + dragAmount.x / size.width * (0.85f + stats.speed * 0.15f)).coerceIn(0.12f, 0.88f)
+                            shipY = (shipY + dragAmount.y / size.height * (0.85f + stats.speed * 0.15f)).coerceIn(0.30f, 0.86f)
                         }
                     }
             ) {
@@ -483,14 +486,7 @@ private fun MissionReward(onBack: () -> Unit, onReplay: () -> Unit) {
 }
 
 @Composable
-private fun ShipScreen(onBack: () -> Unit) {
-    var hull by remember { mutableIntStateOf(1) }
-    var shield by remember { mutableIntStateOf(1) }
-    var energy by remember { mutableIntStateOf(1) }
-    var damage by remember { mutableIntStateOf(1) }
-    var speed by remember { mutableIntStateOf(1) }
-    var credits by remember { mutableIntStateOf(125) }
-
+private fun ShipScreen(stats: ShipStats, credits: Int, onSpend: (Int) -> Unit, onBack: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         SpaceBackground()
         Column(Modifier.fillMaxSize().padding(18.dp)) {
@@ -537,11 +533,11 @@ private fun ShipScreen(onBack: () -> Unit) {
             Spacer(Modifier.height(18.dp))
             Text("ATRIBUTOS", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
             Spacer(Modifier.height(10.dp))
-            ShipStat("HULL", hull, ElectricBlue) { if (credits >= 50) { credits -= 50; hull++ } }
-            ShipStat("SHIELD", shield, NeonCyan) { if (credits >= 50) { credits -= 50; shield++ } }
-            ShipStat("ENERGY", energy, Violet) { if (credits >= 50) { credits -= 50; energy++ } }
-            ShipStat("DAMAGE", damage, ElectricBlue) { if (credits >= 75) { credits -= 75; damage++ } }
-            ShipStat("SPEED", speed, NeonCyan) { if (credits >= 75) { credits -= 75; speed++ } }
+            ShipStat("HULL", stats.hull, ElectricBlue) { if (credits >= 50 && stats.hull < 5) { onSpend(credits - 50); stats.hull++ } }
+            ShipStat("SHIELD", stats.shield, NeonCyan) { if (credits >= 50 && stats.shield < 5) { onSpend(credits - 50); stats.shield++ } }
+            ShipStat("ENERGY", stats.energy, Violet) { if (credits >= 50 && stats.energy < 5) { onSpend(credits - 50); stats.energy++ } }
+            ShipStat("DAMAGE", stats.damage, ElectricBlue) { if (credits >= 75 && stats.damage < 5) { onSpend(credits - 75); stats.damage++ } }
+            ShipStat("SPEED", stats.speed, NeonCyan) { if (credits >= 75 && stats.speed < 5) { onSpend(credits - 75); stats.speed++ } }
             Spacer(Modifier.height(10.dp))
             Text("Cada melhoria aumenta um atributo da nave.", color = White.copy(alpha = 0.4f), fontSize = 10.sp)
         }
