@@ -276,6 +276,31 @@ private fun PrototypeGame(onBack: () -> Unit, onMissionComplete: () -> Unit) {
                 val distance = sqrt(dx * dx + dy * dy)
                 if (distance < 0.018f) {
                     explosions.add(Explosion(p.targetX, p.targetY, System.currentTimeMillis()))
+                    if (enemyHp > 0) {
+                        enemyHp--
+                        message = "IMPACTO!"
+                        if (enemyHp <= 0) {
+                            kills++
+                            streak++
+                            xp += 50
+                            credits += 25
+                            if (xp >= level * 100) {
+                                xp -= level * 100
+                                level++
+                                energy = 1f
+                                message = "NÍVEL $level • +25 CRÉDITOS"
+                            } else {
+                                message = "ALVO DESTRUÍDO • +25"
+                            }
+                            if (kills >= 5) {
+                                onMissionComplete()
+                            } else {
+                                enemyHp = 3
+                                enemyX = Random.nextFloat() * 0.68f + 0.16f
+                                enemyY = 0.18f
+                            }
+                        }
+                    }
                 } else {
                     p.x += dx * 0.16f
                     p.y += dy * 0.16f
@@ -314,38 +339,7 @@ private fun PrototypeGame(onBack: () -> Unit, onMissionComplete: () -> Unit) {
         energy = (energy - 0.12f).coerceAtLeast(0f)
         fireCooldown = 0.18f
         projectiles.add(Projectile(shipX, shipY - 0.02f, enemyX, enemyY))
-        val distance = sqrt(
-            ((shipX - enemyX) * (shipX - enemyX)) +
-                ((shipY - enemyY) * (shipY - enemyY))
-        )
-        if (distance < 0.32f) {
-            enemyHp--
-            message = "IMPACTO!"
-            if (enemyHp <= 0) {
-                explosions.add(Explosion(enemyX, enemyY, System.currentTimeMillis()))
-                kills++
-                streak++
-                xp += 50
-                credits += 25
-                if (xp >= level * 100) {
-                    xp -= level * 100
-                    level++
-                    energy = 1f
-                    message = "NÍVEL $level • +25 CRÉDITOS"
-                } else {
-                    message = "ALVO DESTRUÍDO • +25"
-                }
-                if (kills >= 5) {
-                    onMissionComplete()
-                    return
-                }
-                enemyHp = 3
-                enemyX = Random.nextFloat() * 0.68f + 0.16f
-                enemyY = 0.18f
-            }
-        } else {
-            message = "DISPARO"
-        }
+        message = "DISPARO"
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -373,7 +367,7 @@ private fun PrototypeGame(onBack: () -> Unit, onMissionComplete: () -> Unit) {
                     Text("ÓRBITA DESCONHECIDA", color = White.copy(alpha = 0.45f), fontSize = 10.sp)
                 }
                 Spacer(Modifier.weight(1f))
-                HudChip("LV 01")
+                HudChip("LV $level")
             }
 
             Spacer(Modifier.height(12.dp))
@@ -426,7 +420,7 @@ private fun PrototypeGame(onBack: () -> Unit, onMissionComplete: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                HudChip("LV $level • $xp/${level * 100} XP")
+                HudChip("XP $xp/${level * 100} • STREAK $streak")
                 Box(
                     modifier = Modifier
                         .size(78.dp)
