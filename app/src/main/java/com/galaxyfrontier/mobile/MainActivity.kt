@@ -90,6 +90,7 @@ private fun GalaxyFrontierApp() {
     val shipStats = remember { mutableStateOf(ShipStats()) }
     var credits by remember { mutableIntStateOf(125) }
     var selectedMission by remember { mutableStateOf(Mission("PATRULHA", "Primeiro contato hostil", 5, 3, 125, 250, "FÁCIL")) }
+    var unlockedMissions by remember { mutableIntStateOf(1) }
 
     AnimatedContent(
         targetState = screen,
@@ -98,10 +99,10 @@ private fun GalaxyFrontierApp() {
     ) { current ->
         when (current) {
             Screen.MENU -> MainMenu(onPlay = { screen = Screen.GAME }, onShip = { screen = Screen.SHIP }, onGalaxy = { screen = Screen.GALAXY }, onSettings = { screen = Screen.SETTINGS })
-            Screen.GAME -> PrototypeGame(stats = shipStats.value, mission = selectedMission, onBack = { screen = Screen.GALAXY }, onCreditEarned = { credits += 25 }, onMissionComplete = { credits += selectedMission.rewardCredits; screen = Screen.REWARD })
+            Screen.GAME -> PrototypeGame(stats = shipStats.value, mission = selectedMission, onBack = { screen = Screen.GALAXY }, onCreditEarned = { credits += 25 }, onMissionComplete = { credits += selectedMission.rewardCredits; unlockedMissions = maxOf(unlockedMissions, if (selectedMission.title == "PATRULHA") 2 else unlockedMissions); screen = Screen.REWARD })
             Screen.SHIP -> ShipScreen(stats = shipStats.value, credits = credits, onUpgrade = { newCredits, newStats -> credits = newCredits; shipStats.value = newStats }, onBack = { screen = Screen.MENU })
             Screen.REWARD -> MissionReward(mission = selectedMission, onBack = { screen = Screen.GALAXY }, onReplay = { screen = Screen.GAME })
-            Screen.GALAXY -> GalaxyMap(selectedMission = selectedMission, onSelect = { selectedMission = it }, onBack = { screen = Screen.MENU }, onPlay = { screen = Screen.GAME })
+            Screen.GALAXY -> GalaxyMap(selectedMission = selectedMission, unlockedMissions = unlockedMissions, onSelect = { selectedMission = it }, onBack = { screen = Screen.MENU }, onPlay = { screen = Screen.GAME })
             Screen.SETTINGS -> SettingsScreen(onBack = { screen = Screen.MENU })
         }
     }
@@ -535,7 +536,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
 }
 
 @Composable
-private fun GalaxyMap(selectedMission: Mission, onSelect: (Mission) -> Unit, onBack: () -> Unit, onPlay: () -> Unit) {
+private fun GalaxyMap(selectedMission: Mission, unlockedMissions: Int, onSelect: (Mission) -> Unit, onBack: () -> Unit, onPlay: () -> Unit) {
     val missions = listOf(
         Mission("PATRULHA", "Primeiro contato hostil", 5, 3, 125, 250, "FÁCIL"),
         Mission("CERCO", "Sinais hostis detectados", 8, 4, 200, 400, "MÉDIO")
@@ -582,6 +583,7 @@ private fun GalaxyMap(selectedMission: Mission, onSelect: (Mission) -> Unit, onB
                 // Os nós desbloqueados agora são os próprios alvos de toque.
                 missions.forEachIndexed { index, mission ->
                     val selected = index == selectedIndex
+                    val unlocked = index < unlockedMissions
                     val node = if (index == 0) Offset(.18f, .22f) else Offset(.50f, .34f)
                     Box(
                         Modifier
@@ -589,15 +591,15 @@ private fun GalaxyMap(selectedMission: Mission, onSelect: (Mission) -> Unit, onB
                             .padding(start = (node.x * 100).toInt().dp, top = (node.y * 100).toInt().dp)
                             .size(92.dp)
                             .clip(RoundedCornerShape(46.dp))
-                            .clickable {
+                            .clickable(enabled = unlocked) {
                                 selectedIndex = index
                                 onSelect(mission)
                             },
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text("SETOR " + (index + 1), color = if (selected) NeonCyan else White, fontSize = 9.sp, fontWeight = FontWeight.Black)
-                            Text(mission.difficulty, color = White.copy(alpha = .55f), fontSize = 7.sp)
+                            Text("SETOR " + (index + 1), color = if (selected) NeonCyan else if (unlocked) White else White.copy(alpha = .28f), fontSize = 9.sp, fontWeight = FontWeight.Black)
+                            Text(if (unlocked) mission.difficulty else "BLOQUEADO", color = White.copy(alpha = if (unlocked) .55f else .25f), fontSize = 7.sp)
                         }
                     }
                 }
@@ -611,7 +613,7 @@ private fun GalaxyMap(selectedMission: Mission, onSelect: (Mission) -> Unit, onB
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Text("Selecione um setor disponível para iniciar a missão.",
+            Text(if (unlockedMissions < missions.size) "Conclua a missão atual para desbloquear o próximo setor." else "Todos os setores disponíveis foram desbloqueados.",
                 color = White.copy(alpha=.38f), fontSize = 10.sp, textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth())
         }
