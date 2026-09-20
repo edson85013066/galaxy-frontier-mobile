@@ -653,7 +653,7 @@ private fun MissionDefeat(
                     .clickable(onClick = onBack),
                 contentAlignment = Alignment.Center
             ) {
-                Text("VOLTAR À GALÁXIA", color = White.copy(alpha = .75f), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1f)
+                Text("VOLTAR À GALÁXIA", color = White.copy(alpha = .75f), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
             }
         }
     }
@@ -891,6 +891,70 @@ private fun ShipStat(name: String, level: Int, accent: Color, onUpgrade: () -> U
             .background(White.copy(alpha = 0.07f)).border(1.dp, accent.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
             .clickable(onClick = onUpgrade), contentAlignment = Alignment.Center) {
             Text("UP", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+@Composable
+private fun HudChip(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(White.copy(alpha = 0.07f))
+            .border(1.dp, NeonCyan.copy(alpha = 0.18f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 11.dp, vertical = 7.dp)
+    ) {
+        Text(
+            text = text,
+            color = NeonCyan,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Black,
+            letterSpacing = 0.8.sp
+        )
+    }
+}
+
+@Composable
+private fun HudBar(
+    label: String,
+    value: Float,
+    accent: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = label,
+                color = White.copy(alpha = 0.5f),
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp
+            )
+            Text(
+                text = String.format(java.util.Locale.US, "%.1f", value),
+                color = White.copy(alpha = 0.7f),
+                fontSize = 8.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Spacer(Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(7.dp)
+                .clip(RoundedCornerShape(5.dp))
+                .background(White.copy(alpha = 0.07f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(value.coerceIn(0f, 5f) / 5f)
+                    .fillMaxSize()
+                    .clip(RoundedCornerShape(5.dp))
+                    .background(accent)
+            )
         }
     }
 }
