@@ -57,7 +57,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-private enum class Screen { MENU, GAME }
+private enum class Screen { MENU, GAME, REWARD }
 
 private data class Projectile(var x: Float, var y: Float, val targetX: Float, val targetY: Float)
 private data class Explosion(val x: Float, val y: Float, val createdAt: Long)
@@ -92,7 +92,8 @@ private fun GalaxyFrontierApp() {
     ) { current ->
         when (current) {
             Screen.MENU -> MainMenu(onPlay = { screen = Screen.GAME })
-            Screen.GAME -> PrototypeGame(onBack = { screen = Screen.MENU })
+            Screen.GAME -> PrototypeGame(onBack = { screen = Screen.MENU }, onMissionComplete = { screen = Screen.REWARD })
+            Screen.REWARD -> MissionReward(onBack = { screen = Screen.MENU }, onReplay = { screen = Screen.GAME })
         }
     }
 }
@@ -246,7 +247,7 @@ private fun MenuButton(
 }
 
 @Composable
-private fun PrototypeGame(onBack: () -> Unit) {
+private fun PrototypeGame(onBack: () -> Unit, onMissionComplete: () -> Unit) {
     var shipX by remember { mutableFloatStateOf(0.5f) }
     var shipY by remember { mutableFloatStateOf(0.72f) }
     var enemyX by remember { mutableFloatStateOf(0.5f) }
@@ -255,6 +256,13 @@ private fun PrototypeGame(onBack: () -> Unit) {
     var hull by remember { mutableFloatStateOf(1f) }
     var shield by remember { mutableFloatStateOf(1f) }
     var shots by remember { mutableIntStateOf(0) }
+    var kills by remember { mutableIntStateOf(0) }
+    var xp by remember { mutableIntStateOf(0) }
+    var level by remember { mutableIntStateOf(1) }
+    var credits by remember { mutableIntStateOf(0) }
+    var streak by remember { mutableIntStateOf(0) }
+    var energy by remember { mutableFloatStateOf(1f) }
+    var fireCooldown by remember { mutableFloatStateOf(0f) }
     var message by remember { mutableStateOf("INIMIGO DETECTADO") }
     val projectiles = remember { mutableStateListOf<Projectile>() }
     val explosions = remember { mutableStateListOf<Explosion>() }
@@ -278,6 +286,8 @@ private fun PrototypeGame(onBack: () -> Unit) {
                 val dy = p.targetY - p.y
                 sqrt(dx * dx + dy * dy) < 0.02f
             }
+            energy = (energy + 0.0008f).coerceAtMost(1f)
+            fireCooldown = (fireCooldown - 0.025f).coerceAtLeast(0f)
             val now = System.currentTimeMillis()
             explosions.removeAll { now - it.createdAt > 520L }
 
@@ -287,6 +297,7 @@ private fun PrototypeGame(onBack: () -> Unit) {
             if (enemyY > 0.58f) {
                 enemyY = 0.18f
                 enemyX = Random.nextFloat() * 0.68f + 0.16f
+                streak = 0
                 shield = (shield - 0.08f).coerceAtLeast(0f)
                 if (shield <= 0f) hull = (hull - 0.06f).coerceAtLeast(0f)
                 message = if (hull <= 0f) "NAVE DANIFICADA" else "ALERTA"
@@ -295,7 +306,13 @@ private fun PrototypeGame(onBack: () -> Unit) {
     }
 
     fun fire() {
+        if (fireCooldown > 0f || energy < 0.12f || hull <= 0f) {
+            message = if (energy < 0.12f) "ENERGIA BAIXA" else "RECARREGANDO"
+            return
+        }
         shots++
+        energy = (energy - 0.12f).coerceAtLeast(0f)
+        fireCooldown = 0.18f
         projectiles.add(Projectile(shipX, shipY - 0.02f, enemyX, enemyY))
         val distance = sqrt(
             ((shipX - enemyX) * (shipX - enemyX)) +
@@ -306,10 +323,25 @@ private fun PrototypeGame(onBack: () -> Unit) {
             message = "IMPACTO!"
             if (enemyHp <= 0) {
                 explosions.add(Explosion(enemyX, enemyY, System.currentTimeMillis()))
+                kills++
+                streak++
+                xp += 50
+                credits += 25
+                if (xp >= level * 100) {
+                    xp -= level * 100
+                    level++
+                    energy = 1f
+                    message = "NÍVEL $level • +25 CRÉDITOS"
+                } else {
+                    message = "ALVO DESTRUÍDO • +25"
+                }
+                if (kills >= 5) {
+                    onMissionComplete()
+                    return
+                }
                 enemyHp = 3
                 enemyX = Random.nextFloat() * 0.68f + 0.16f
                 enemyY = 0.18f
-                message = "ALVO DESTRUÍDO"
             }
         } else {
             message = "DISPARO"
@@ -349,7 +381,7 @@ private fun PrototypeGame(onBack: () -> Unit) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 HudBar("HULL", hull, ElectricBlue, Modifier.weight(1f))
                 HudBar("SHIELD", shield, NeonCyan, Modifier.weight(1f))
-                HudBar("ENERGY", 0.82f, Violet, Modifier.weight(1f))
+                HudBar("ENERGY", energy, Violet, Modifier.weight(1f))
             }
 
             Box(
@@ -394,7 +426,7 @@ private fun PrototypeGame(onBack: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                HudChip("TIROS $shots")
+                HudChip("LV $level • $xp/${level * 100} XP")
                 Box(
                     modifier = Modifier
                         .size(78.dp)
@@ -410,8 +442,41 @@ private fun PrototypeGame(onBack: () -> Unit) {
                 ) {
                     Text("ATIRAR", color = White, fontSize = 12.sp, fontWeight = FontWeight.Black)
                 }
-                HudChip("ALVO x$enemyHp")
+                HudChip("KILLS $kills • +$credits CR")
             }
+        }
+    }
+}
+
+@Composable
+@Composable
+private fun MissionReward(onBack: () -> Unit, onReplay: () -> Unit) {
+    Box(Modifier.fillMaxSize()) {
+        SpaceBackground()
+        Column(
+            modifier = Modifier.fillMaxSize().padding(28.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("MISSÃO CONCLUÍDA", color = NeonCyan, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.5.sp)
+            Spacer(Modifier.height(12.dp))
+            Text("SETOR 01", color = White, fontSize = 42.sp, fontWeight = FontWeight.Black, letterSpacing = 3.sp)
+            Text("ÓRBITA DESCONHECIDA", color = White.copy(alpha = 0.55f), fontSize = 12.sp, letterSpacing = 1.5.sp)
+            Spacer(Modifier.height(28.dp))
+            Column(
+                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(White.copy(alpha = 0.07f)).border(1.dp, NeonCyan.copy(alpha = 0.18f), RoundedCornerShape(24.dp)).padding(22.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text("RECOMPENSAS", color = White.copy(alpha = 0.55f), fontSize = 11.sp, letterSpacing = 2.sp)
+                Spacer(Modifier.height(14.dp))
+                Text("+125 CRÉDITOS", color = NeonCyan, fontSize = 25.sp, fontWeight = FontWeight.Black)
+                Text("+250 XP", color = White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("5 inimigos neutralizados", color = White.copy(alpha = 0.55f), fontSize = 12.sp)
+            }
+            Spacer(Modifier.height(28.dp))
+            MenuButton("CONTINUAR", Icons.Default.PlayArrow, true, onReplay)
+            Spacer(Modifier.height(12.dp))
+            MenuButton("MENU PRINCIPAL", Icons.Default.ArrowBack, false, onBack)
         }
     }
 }
