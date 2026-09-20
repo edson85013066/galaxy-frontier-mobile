@@ -378,9 +378,15 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
         }
     }
 
+    val canFire = !combatEnded && hull > 0f && fireCooldown <= 0f && energy >= 0.12f
+
     fun fire() {
-        if (fireCooldown > 0f || energy < 0.12f || hull <= 0f) {
-            message = if (energy < 0.12f) "ENERGIA BAIXA" else "RECARREGANDO"
+        if (!canFire) {
+            message = when {
+                hull <= 0f -> "NAVE INOPERANTE"
+                energy < 0.12f -> "ENERGIA BAIXA"
+                else -> "RECARREGANDO"
+            }
             return
         }
         shots++
@@ -494,16 +500,33 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                     modifier = Modifier
                         .size(78.dp)
                         .clip(RoundedCornerShape(26.dp))
+                        .alpha(if (canFire) 1f else 0.42f)
                         .background(
                             Brush.radialGradient(
-                                listOf(NeonCyan.copy(alpha = 0.42f), Violet.copy(alpha = 0.30f))
+                                listOf(
+                                    NeonCyan.copy(alpha = if (canFire) 0.42f else 0.12f),
+                                    Violet.copy(alpha = if (canFire) 0.30f else 0.08f)
+                                )
                             )
                         )
-                        .border(2.dp, NeonCyan.copy(alpha = 0.55f), RoundedCornerShape(26.dp))
+                        .border(2.dp, (if (canFire) NeonCyan else White).copy(alpha = if (canFire) 0.55f else 0.18f), RoundedCornerShape(26.dp))
                         .clickable { fire() },
                     contentAlignment = Alignment.Center
                 ) {
-                    Text("ATIRAR", color = White, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("ATIRAR", color = White, fontSize = 12.sp, fontWeight = FontWeight.Black)
+                        Text(
+                            text = when {
+                                hull <= 0f -> "INOPERANTE"
+                                energy < 0.12f -> "SEM ENERGIA"
+                                fireCooldown > 0f -> (kotlin.math.round(fireCooldown * 10f) / 10f).toString() + "s"
+                                else -> "PRONTO"
+                            },
+                            color = White.copy(alpha = 0.58f),
+                            fontSize = 7.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
                 }
                 HudChip("KILLS $kills • +$credits CR")
             }
