@@ -95,7 +95,7 @@ private fun GalaxyFrontierApp() {
     ) { current ->
         when (current) {
             Screen.MENU -> MainMenu(onPlay = { screen = Screen.GAME }, onShip = { screen = Screen.SHIP })
-            Screen.GAME -> PrototypeGame(stats = shipStats.value, onBack = { screen = Screen.MENU }, onMissionComplete = { screen = Screen.REWARD })
+            Screen.GAME -> PrototypeGame(stats = shipStats.value, onBack = { screen = Screen.MENU }, onCreditEarned = { credits += 25 }, onMissionComplete = { screen = Screen.REWARD })
             Screen.SHIP -> ShipScreen(stats = shipStats.value, credits = credits, onSpend = { credits = it }, onBack = { screen = Screen.MENU })
             Screen.REWARD -> MissionReward(onBack = { screen = Screen.MENU }, onReplay = { screen = Screen.GAME })
         }
@@ -258,7 +258,7 @@ private fun MenuButton(
 }
 
 @Composable
-private fun PrototypeGame(stats: ShipStats, onBack: () -> Unit, onMissionComplete: () -> Unit) {
+private fun PrototypeGame(stats: ShipStats, onBack: () -> Unit, onCreditEarned: () -> Unit, onMissionComplete: () -> Unit) {
     var shipX by remember { mutableFloatStateOf(0.5f) }
     var shipY by remember { mutableFloatStateOf(0.72f) }
     var enemyX by remember { mutableFloatStateOf(0.5f) }
@@ -295,6 +295,7 @@ private fun PrototypeGame(stats: ShipStats, onBack: () -> Unit, onMissionComplet
                             streak++
                             xp += 50
                             credits += 25
+                            onCreditEarned()
                             if (xp >= level * 100) {
                                 xp -= level * 100
                                 level++
