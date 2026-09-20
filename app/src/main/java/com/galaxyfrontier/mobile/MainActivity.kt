@@ -57,7 +57,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-private enum class Screen { MENU, GAME, REWARD }
+private enum class Screen { MENU, GAME, SHIP, REWARD }
 
 private data class Projectile(var x: Float, var y: Float, val targetX: Float, val targetY: Float)
 private data class Explosion(val x: Float, val y: Float, val createdAt: Long)
@@ -91,8 +91,9 @@ private fun GalaxyFrontierApp() {
         label = "screen"
     ) { current ->
         when (current) {
-            Screen.MENU -> MainMenu(onPlay = { screen = Screen.GAME })
+            Screen.MENU -> MainMenu(onPlay = { screen = Screen.GAME }, onShip = { screen = Screen.SHIP })
             Screen.GAME -> PrototypeGame(onBack = { screen = Screen.MENU }, onMissionComplete = { screen = Screen.REWARD })
+            Screen.SHIP -> ShipScreen(onBack = { screen = Screen.MENU })
             Screen.REWARD -> MissionReward(onBack = { screen = Screen.MENU }, onReplay = { screen = Screen.GAME })
         }
     }
@@ -144,7 +145,7 @@ private fun SpaceBackground(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun MainMenu(onPlay: () -> Unit) {
+private fun MainMenu(onPlay: () -> Unit, onShip: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         SpaceBackground()
 
@@ -187,6 +188,13 @@ private fun MainMenu(onPlay: () -> Unit) {
                 icon = Icons.Default.PlayArrow,
                 primary = true,
                 onClick = onPlay
+            )
+            Spacer(Modifier.height(12.dp))
+            MenuButton(
+                text = "MINHA NAVE",
+                icon = Icons.Default.Settings,
+                primary = false,
+                onClick = onShip
             )
             Spacer(Modifier.height(12.dp))
             MenuButton(
@@ -442,7 +450,6 @@ private fun PrototypeGame(onBack: () -> Unit, onMissionComplete: () -> Unit) {
     }
 }
 
-@Composable
 @Composable
 private fun MissionReward(onBack: () -> Unit, onReplay: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
