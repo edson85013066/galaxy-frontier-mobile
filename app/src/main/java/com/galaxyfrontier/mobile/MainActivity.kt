@@ -63,6 +63,7 @@ private enum class Screen { MENU, GAME, SHIP, REWARD, GALAXY }
 private data class Projectile(var x: Float, var y: Float, val targetX: Float, val targetY: Float)
 private data class Explosion(val x: Float, val y: Float, val createdAt: Long)
 private data class ShipStats(var hull: Int = 1, var shield: Int = 1, var energy: Int = 1, var damage: Int = 1, var speed: Int = 1)
+private data class Mission(val title: String, val subtitle: String, val targetKills: Int, val enemyHp: Int, val rewardCredits: Int, val rewardXp: Int, val difficulty: String)
 
 private val SpaceBlack = Color(0xFF030511)
 private val DeepBlue = Color(0xFF08133A)
@@ -88,6 +89,7 @@ private fun GalaxyFrontierApp() {
     var screen by remember { mutableStateOf(Screen.MENU) }
     val shipStats = remember { mutableStateOf(ShipStats()) }
     var credits by remember { mutableIntStateOf(125) }
+    var selectedMission by remember { mutableStateOf(Mission("PATRULHA", "Primeiro contato hostil", 5, 3, 125, 250, "FÁCIL")) }
 
     AnimatedContent(
         targetState = screen,
@@ -96,10 +98,10 @@ private fun GalaxyFrontierApp() {
     ) { current ->
         when (current) {
             Screen.MENU -> MainMenu(onPlay = { screen = Screen.GAME }, onShip = { screen = Screen.SHIP }, onGalaxy = { screen = Screen.GALAXY })
-            Screen.GAME -> PrototypeGame(stats = shipStats.value, onBack = { screen = Screen.MENU }, onCreditEarned = { credits += 25 }, onMissionComplete = { screen = Screen.REWARD })
+            Screen.GAME -> PrototypeGame(stats = shipStats.value, mission = selectedMission, onBack = { screen = Screen.GALAXY }, onCreditEarned = { credits += 25 }, onMissionComplete = { screen = Screen.REWARD })
             Screen.SHIP -> ShipScreen(stats = shipStats.value, credits = credits, onSpend = { credits = it }, onBack = { screen = Screen.MENU })
-            Screen.REWARD -> MissionReward(onBack = { screen = Screen.MENU }, onReplay = { screen = Screen.GAME })
-            Screen.GALAXY -> GalaxyMap(onBack = { screen = Screen.MENU }, onPlay = { screen = Screen.GAME })
+            Screen.REWARD -> MissionReward(mission = selectedMission, onBack = { screen = Screen.GALAXY }, onReplay = { screen = Screen.GAME })
+            Screen.GALAXY -> GalaxyMap(selectedMission = selectedMission, onSelect = { selectedMission = it }, onBack = { screen = Screen.MENU }, onPlay = { screen = Screen.GAME })
         }
     }
 }
@@ -262,12 +264,12 @@ private fun MenuButton(
 }
 
 @Composable
-private fun PrototypeGame(stats: ShipStats, onBack: () -> Unit, onCreditEarned: () -> Unit, onMissionComplete: () -> Unit) {
+private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit, onCreditEarned: () -> Unit, onMissionComplete: () -> Unit) {
     var shipX by remember { mutableFloatStateOf(0.5f) }
     var shipY by remember { mutableFloatStateOf(0.72f) }
     var enemyX by remember { mutableFloatStateOf(0.5f) }
     var enemyY by remember { mutableFloatStateOf(0.25f) }
-    var enemyHp by remember { mutableIntStateOf(3) }
+    var enemyHp by remember { mutableIntStateOf(mission.enemyHp) }
     var hull by remember { mutableFloatStateOf(stats.hull.toFloat()) }
     var shield by remember { mutableFloatStateOf(stats.shield.toFloat()) }
     var shots by remember { mutableIntStateOf(0) }
@@ -308,10 +310,10 @@ private fun PrototypeGame(stats: ShipStats, onBack: () -> Unit, onCreditEarned: 
                             } else {
                                 message = "ALVO DESTRUÍDO • +25"
                             }
-                            if (kills >= 5) {
+                            if (kills >= mission.targetKills) {
                                 onMissionComplete()
                             } else {
-                                enemyHp = 3
+                                enemyHp = mission.enemyHp
                                 enemyX = Random.nextFloat() * 0.68f + 0.16f
                                 enemyY = 0.18f
                             }
@@ -459,7 +461,7 @@ private fun PrototypeGame(stats: ShipStats, onBack: () -> Unit, onCreditEarned: 
 }
 
 @Composable
-private fun GalaxyMap(onBack: () -> Unit, onPlay: () -> Unit) {
+private fun GalaxyMap(selectedMission: Mission, onSelect: (Mission) -> Unit, onBack: () -> Unit, onPlay: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         SpaceBackground()
         Column(Modifier.fillMaxSize().padding(18.dp)) {
@@ -503,7 +505,7 @@ private fun GalaxyMap(onBack: () -> Unit, onPlay: () -> Unit) {
 }
 
 @Composable
-private fun MissionReward(onBack: () -> Unit, onReplay: () -> Unit) {
+private fun MissionReward(mission: Mission, onBack: () -> Unit, onReplay: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         SpaceBackground()
         Column(
@@ -522,9 +524,9 @@ private fun MissionReward(onBack: () -> Unit, onReplay: () -> Unit) {
             ) {
                 Text("RECOMPENSAS", color = White.copy(alpha = 0.55f), fontSize = 11.sp, letterSpacing = 2.sp)
                 Spacer(Modifier.height(14.dp))
-                Text("+125 CRÉDITOS", color = NeonCyan, fontSize = 25.sp, fontWeight = FontWeight.Black)
-                Text("+250 XP", color = White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Text("5 inimigos neutralizados", color = White.copy(alpha = 0.55f), fontSize = 12.sp)
+                Text("+${mission.rewardCredits} CRÉDITOS", color = NeonCyan, fontSize = 25.sp, fontWeight = FontWeight.Black)
+                Text("+${mission.rewardXp} XP", color = White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text("${mission.targetKills} inimigos neutralizados", color = White.copy(alpha = 0.55f), fontSize = 12.sp)
             }
             Spacer(Modifier.height(28.dp))
             MenuButton("CONTINUAR", Icons.Default.PlayArrow, true, onReplay)
