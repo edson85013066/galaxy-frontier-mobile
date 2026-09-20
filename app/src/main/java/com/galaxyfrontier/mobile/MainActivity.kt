@@ -62,7 +62,7 @@ import kotlin.random.Random
 
 private enum class Screen { MENU, GAME, SHIP, REWARD, GALAXY, SETTINGS }
 
-private data class Projectile(var x: Float, var y: Float, val targetX: Float, val targetY: Float)
+private data class Projectile(var x: Float, var y: Float, val targetX: Float, val targetY: Float, val damage: Int)
 private data class Explosion(val x: Float, val y: Float, val createdAt: Long)
 private data class ShipStats(val hull: Int = 1, val shield: Int = 1, val energy: Int = 1, val damage: Int = 1, val speed: Int = 1)
 private data class Mission(val title: String, val subtitle: String, val targetKills: Int, val enemyHp: Int, val rewardCredits: Int, val rewardXp: Int, val difficulty: String)
@@ -290,6 +290,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
     var streak by remember { mutableIntStateOf(0) }
     var energy by remember { mutableFloatStateOf(stats.energy.toFloat()) }
     var fireCooldown by remember { mutableFloatStateOf(0f) }
+    var enemyHitFlash by remember { mutableFloatStateOf(0f) }
     var joystickX by remember { mutableFloatStateOf(0f) }
     var joystickY by remember { mutableFloatStateOf(0f) }
     var message by remember { mutableStateOf("INIMIGO DETECTADO") }
@@ -306,11 +307,12 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                     val dx = p.targetX - p.x
                     val dy = p.targetY - p.y
                     val distance = sqrt(dx * dx + dy * dy)
-                    if (distance < 0.018f) {
+                    if (distance < 0.035f) {
                         projectiles.remove(p)
+                        enemyHitFlash = 1f
                         explosions.add(Explosion(p.targetX, p.targetY, System.currentTimeMillis()))
                         if (enemyHp > 0) {
-                            enemyHp -= stats.damage
+                            enemyHp -= p.damage
                             message = "IMPACTO!"
                             if (enemyHp <= 0) {
                                 kills++
@@ -372,6 +374,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
             }
             energy = (energy + 0.0008f).coerceAtMost(stats.energy.toFloat())
             fireCooldown = (fireCooldown - 0.025f).coerceAtLeast(0f)
+            enemyHitFlash = (enemyHitFlash - 0.08f).coerceAtLeast(0f)
             val now = System.currentTimeMillis()
             explosions.removeAll { now - it.createdAt > 520L }
 
@@ -403,7 +406,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
         shots++
         energy = (energy - 0.12f).coerceAtLeast(0f)
         fireCooldown = 0.18f
-        projectiles.add(Projectile(shipX, shipY - 0.02f, enemyX, enemyY))
+        projectiles.add(Projectile(shipX, shipY - 0.02f, enemyX, enemyY, stats.damage))
         message = "DISPARO"
     }
 
@@ -450,7 +453,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                     .clip(RoundedCornerShape(24.dp))
             ) {
                 CombatField(
-                    shipX, shipY, enemyX, enemyY, enemyHp, projectiles, explosions
+                    shipX, shipY, enemyX, enemyY, enemyHp, mission.enemyHp, enemyHitFlash, projectiles, explosions
                 )
 
                 // Controle de voo dedicado: não bloqueia o botão de tiro.
@@ -806,6 +809,8 @@ private fun CombatField(
     enemyX: Float,
     enemyY: Float,
     enemyHp: Int,
+    maxEnemyHp: Int,
+    enemyHitFlash: Float,
     projectiles: List<Projectile>,
     explosions: List<Explosion>
 ) {
@@ -839,7 +844,7 @@ private fun CombatField(
             lineTo(enemy.x + 27f, enemy.y + 20f)
             close()
         }
-        drawPath(enemyPath, brush = Brush.verticalGradient(listOf(Color(0xFFFF718C), Violet)))
+        drawPath(enemyPath, brush = Brush.verticalGradient(listOf(White.copy(alpha = enemyHitFlash), Violet)))
         drawPath(enemyPath, color = White.copy(alpha = 0.65f), style = Stroke(2f))
 
         repeat(enemyHp) { i ->
