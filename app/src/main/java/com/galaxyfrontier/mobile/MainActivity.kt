@@ -291,6 +291,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
     var level by remember { mutableIntStateOf(1) }
     var credits by remember { mutableIntStateOf(0) }
     var streak by remember { mutableIntStateOf(0) }
+    var bestStreak by remember { mutableIntStateOf(0) }
     var energy by remember { mutableFloatStateOf(stats.energy.toFloat()) }
     var fireCooldown by remember { mutableFloatStateOf(0f) }
     var enemyHitFlash by remember { mutableFloatStateOf(0f) }
@@ -336,7 +337,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                                 if (kills >= mission.targetKills) {
                                     combatEnded = true
                                     projectiles.clear()
-                                    onMissionComplete(CombatResult(kills, shots, ((kills.toFloat() / shots.coerceAtLeast(1)) * 100f).toInt(), streak))
+                                    onMissionComplete(CombatResult(kills, shots, ((kills.toFloat() / shots.coerceAtLeast(1)) * 100f).toInt(), bestStreak))
                                 } else {
                                     projectiles.clear()
                                     enemyHp = mission.enemyHp
@@ -531,7 +532,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                 }
 
                 Text(
-                    message,
+                    if (streak >= 2) "$message  •  STREAK x$streak" else message,
                     color = if (message.startsWith("ALVO DESTRUÍDO") || message.startsWith("NÍVEL")) NeonCyan else White.copy(alpha = 0.72f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
