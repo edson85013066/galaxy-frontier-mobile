@@ -483,6 +483,90 @@ private fun MissionReward(onBack: () -> Unit, onReplay: () -> Unit) {
 }
 
 @Composable
+private fun ShipScreen(onBack: () -> Unit) {
+    var hull by remember { mutableIntStateOf(1) }
+    var shield by remember { mutableIntStateOf(1) }
+    var energy by remember { mutableIntStateOf(1) }
+    var damage by remember { mutableIntStateOf(1) }
+    var speed by remember { mutableIntStateOf(1) }
+    var credits by remember { mutableIntStateOf(125) }
+
+    Box(Modifier.fillMaxSize()) {
+        SpaceBackground()
+        Column(Modifier.fillMaxSize().padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = White,
+                    modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp))
+                        .background(White.copy(alpha = 0.07f)).clickable(onClick = onBack).padding(9.dp))
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text("MINHA NAVE", color = White, fontSize = 18.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+                    Text("EXPLORER • CLASSE I", color = NeonCyan, fontSize = 10.sp, letterSpacing = 1.4.sp)
+                }
+                Spacer(Modifier.weight(1f))
+                HudChip("$credits CR")
+            }
+
+            Spacer(Modifier.height(18.dp))
+
+            Box(Modifier.fillMaxWidth().height(245.dp).clip(RoundedCornerShape(28.dp))
+                .background(White.copy(alpha = 0.055f))
+                .border(1.dp, NeonCyan.copy(alpha = 0.16f), RoundedCornerShape(28.dp))) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val center = Offset(size.width / 2f, size.height / 2f)
+                    drawCircle(Brush.radialGradient(listOf(ElectricBlue.copy(alpha = 0.24f), Color.Transparent)), 120f, center)
+                    drawCircle(NeonCyan.copy(alpha = 0.28f), 82f, center, style = Stroke(1.5f))
+                    val path = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(center.x, center.y - 76f)
+                        lineTo(center.x - 48f, center.y + 48f)
+                        lineTo(center.x - 12f, center.y + 34f)
+                        lineTo(center.x, center.y + 64f)
+                        lineTo(center.x + 12f, center.y + 34f)
+                        lineTo(center.x + 48f, center.y + 48f)
+                        close()
+                    }
+                    drawPath(path, Brush.verticalGradient(listOf(White, ElectricBlue, Violet)))
+                    drawPath(path, NeonCyan, style = Stroke(2f))
+                    drawLine(ElectricBlue.copy(alpha = 0.9f), Offset(center.x - 15f, center.y + 48f), Offset(center.x - 15f, center.y + 88f), 7f)
+                    drawLine(Violet.copy(alpha = 0.9f), Offset(center.x + 15f, center.y + 48f), Offset(center.x + 15f, center.y + 88f), 7f)
+                }
+                Text("EXPLORER", color = White.copy(alpha = 0.5f), fontSize = 9.sp, letterSpacing = 2.sp,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 14.dp))
+            }
+
+            Spacer(Modifier.height(18.dp))
+            Text("ATRIBUTOS", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+            Spacer(Modifier.height(10.dp))
+            ShipStat("HULL", hull, ElectricBlue) { if (credits >= 50) { credits -= 50; hull++ } }
+            ShipStat("SHIELD", shield, NeonCyan) { if (credits >= 50) { credits -= 50; shield++ } }
+            ShipStat("ENERGY", energy, Violet) { if (credits >= 50) { credits -= 50; energy++ } }
+            ShipStat("DAMAGE", damage, ElectricBlue) { if (credits >= 75) { credits -= 75; damage++ } }
+            ShipStat("SPEED", speed, NeonCyan) { if (credits >= 75) { credits -= 75; speed++ } }
+            Spacer(Modifier.height(10.dp))
+            Text("Cada melhoria aumenta um atributo da nave.", color = White.copy(alpha = 0.4f), fontSize = 10.sp)
+        }
+    }
+}
+
+@Composable
+private fun ShipStat(name: String, level: Int, accent: Color, onUpgrade: () -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(name, color = White.copy(alpha = 0.72f), fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(68.dp))
+        repeat(5) { i ->
+            Box(Modifier.padding(horizontal = 2.dp).size(width = 22.dp, height = 7.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(if (i < level) accent else White.copy(alpha = 0.08f)))
+        }
+        Spacer(Modifier.weight(1f))
+        Box(Modifier.size(width = 54.dp, height = 30.dp).clip(RoundedCornerShape(10.dp))
+            .background(White.copy(alpha = 0.07f)).border(1.dp, accent.copy(alpha = 0.3f), RoundedCornerShape(10.dp))
+            .clickable(onClick = onUpgrade), contentAlignment = Alignment.Center) {
+            Text("UP", color = accent, fontSize = 9.sp, fontWeight = FontWeight.Black)
+        }
+    }
+}
+
+@Composable
 private fun CombatField(
     shipX: Float,
     shipY: Float,
