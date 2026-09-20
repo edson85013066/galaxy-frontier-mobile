@@ -372,6 +372,10 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                 enemyX = enemyX.coerceIn(0.16f, 0.84f)
                 enemyY += 0.0007f
 
+                val flightSpeed = 0.0028f + stats.speed * 0.0007f
+                shipX = (shipX + joystickX * flightSpeed).coerceIn(0.12f, 0.88f)
+                shipY = (shipY + joystickY * flightSpeed).coerceIn(0.38f, 0.86f)
+
                 if (enemyY > 0.58f) {
                     enemyY = 0.18f
                     enemyX = Random.nextFloat() * 0.68f + 0.16f
@@ -484,9 +488,6 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                                 change.consume()
                                 joystickX = (joystickX + dragAmount.x / 52f).coerceIn(-1f, 1f)
                                 joystickY = (joystickY + dragAmount.y / 52f).coerceIn(-1f, 1f)
-                                val sensitivity = 0.75f + stats.speed * 0.12f
-                                shipX = (shipX + dragAmount.x / size.width * sensitivity).coerceIn(0.12f, 0.88f)
-                                shipY = (shipY + dragAmount.y / size.height * sensitivity).coerceIn(0.38f, 0.86f)
                             }
                         },
                     contentAlignment = Alignment.Center
