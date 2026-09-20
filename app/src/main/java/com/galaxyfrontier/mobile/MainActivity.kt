@@ -523,36 +523,10 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                     )
                 }
 
-                Text(
-                    if (streak >= 2) "$message  •  STREAK x$streak" else message,
-                    color = if (message.startsWith("ALVO DESTRUÍDO") || message.startsWith("NÍVEL")) NeonCyan else White.copy(alpha = 0.72f),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.8.sp,
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 14.dp)
-                )
-
-                Text(
-                    "ARRASTE O JOYSTICK PARA PILOTAR",
-                    color = White.copy(alpha = 0.35f),
-                    fontSize = 9.sp,
-                    letterSpacing = 1.0.sp,
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp)
-                )
-            }
-
-            Spacer(Modifier.height(10.dp))
-
-            Row(
-                Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                HudChip("XP $xp/${level * 100} • STREAK $streak")
                 Box(
-                    modifier = Modifier
-                        .size(78.dp)
-                        .clip(RoundedCornerShape(26.dp))
+    modifier = Modifier
+                        .size(104.dp)
+                        .clip(RoundedCornerShape(52.dp))
                         .alpha(if (canFire) 1f else 0.42f)
                         .background(
                             Brush.radialGradient(
@@ -581,6 +555,32 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                         )
                     }
                 }
+                Text(
+                    if (streak >= 2) "$message  •  STREAK x$streak" else message,
+                    color = if (message.startsWith("ALVO DESTRUÍDO") || message.startsWith("NÍVEL")) NeonCyan else White.copy(alpha = 0.72f),
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.8.sp,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 14.dp)
+                )
+
+                Text(
+                    "ARRASTE O JOYSTICK PARA PILOTAR",
+                    color = White.copy(alpha = 0.35f),
+                    fontSize = 9.sp,
+                    letterSpacing = 1.0.sp,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp)
+                )
+            }
+
+            Spacer(Modifier.height(10.dp))
+
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                HudChip("XP $xp/${level * 100} • STREAK $streak")
                 HudChip("KILLS $kills • +$credits CR")
             }
         }
