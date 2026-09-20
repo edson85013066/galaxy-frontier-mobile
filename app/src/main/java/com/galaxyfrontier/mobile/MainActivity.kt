@@ -359,7 +359,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                     sqrt(dx * dx + dy * dy) < 0.02f
                 }
 
-                energy = (energy + 0.0008f).coerceAtMost(stats.energy.toFloat())
+                energy = (energy + 0.0035f).coerceAtMost(stats.energy.toFloat())
                 fireCooldown = (fireCooldown - 0.025f).coerceAtLeast(0f)
                 enemyHitFlash = (enemyHitFlash - 0.08f).coerceAtLeast(0f)
                 shipHitFlash = (shipHitFlash - 0.07f).coerceAtLeast(0f)
@@ -401,20 +401,20 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
         }
     }
 
-    val canFire = !combatEnded && hull > 0f && fireCooldown <= 0f && energy >= 0.12f
+    val canFire = !combatEnded && hull > 0f && fireCooldown <= 0f && energy >= 0.05f
 
     fun fire() {
         if (!canFire) {
             message = when {
                 hull <= 0f -> "NAVE INOPERANTE"
-                energy < 0.12f -> "ENERGIA BAIXA"
+                energy < 0.05f -> "ENERGIA BAIXA"
                 else -> "RECARREGANDO"
             }
             return
         }
         shots++
-        energy = (energy - 0.12f).coerceAtLeast(0f)
-        fireCooldown = 0.18f
+        energy = (energy - 0.05f).coerceAtLeast(0f)
+        fireCooldown = 0.12f
         projectiles.add(Projectile(shipX, shipY - 0.02f, enemyX, enemyY, stats.damage))
         message = "DISPARO"
     }
