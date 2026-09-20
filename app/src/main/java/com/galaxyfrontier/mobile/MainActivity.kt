@@ -58,11 +58,11 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-private enum class Screen { MENU, GAME, SHIP, REWARD, GALAXY }
+private enum class Screen { MENU, GAME, SHIP, REWARD, GALAXY, SETTINGS }
 
 private data class Projectile(var x: Float, var y: Float, val targetX: Float, val targetY: Float)
 private data class Explosion(val x: Float, val y: Float, val createdAt: Long)
-private data class ShipStats(var hull: Int = 1, var shield: Int = 1, var energy: Int = 1, var damage: Int = 1, var speed: Int = 1)
+private data class ShipStats(val hull: Int = 1, val shield: Int = 1, val energy: Int = 1, val damage: Int = 1, val speed: Int = 1)
 private data class Mission(val title: String, val subtitle: String, val targetKills: Int, val enemyHp: Int, val rewardCredits: Int, val rewardXp: Int, val difficulty: String)
 
 private val SpaceBlack = Color(0xFF030511)
@@ -97,11 +97,12 @@ private fun GalaxyFrontierApp() {
         label = "screen"
     ) { current ->
         when (current) {
-            Screen.MENU -> MainMenu(onPlay = { screen = Screen.GAME }, onShip = { screen = Screen.SHIP }, onGalaxy = { screen = Screen.GALAXY })
+            Screen.MENU -> MainMenu(onPlay = { screen = Screen.GAME }, onShip = { screen = Screen.SHIP }, onGalaxy = { screen = Screen.GALAXY }, onSettings = { screen = Screen.SETTINGS })
             Screen.GAME -> PrototypeGame(stats = shipStats.value, mission = selectedMission, onBack = { screen = Screen.GALAXY }, onCreditEarned = { credits += 25 }, onMissionComplete = { screen = Screen.REWARD })
-            Screen.SHIP -> ShipScreen(stats = shipStats.value, credits = credits, onSpend = { credits = it }, onBack = { screen = Screen.MENU })
+            Screen.SHIP -> ShipScreen(stats = shipStats.value, credits = credits, onUpgrade = { newCredits, newStats -> credits = newCredits; shipStats.value = newStats }, onBack = { screen = Screen.MENU })
             Screen.REWARD -> MissionReward(mission = selectedMission, onBack = { screen = Screen.GALAXY }, onReplay = { screen = Screen.GAME })
             Screen.GALAXY -> GalaxyMap(selectedMission = selectedMission, onSelect = { selectedMission = it }, onBack = { screen = Screen.MENU }, onPlay = { screen = Screen.GAME })
+            Screen.SETTINGS -> SettingsScreen(onBack = { screen = Screen.MENU })
         }
     }
 }
@@ -152,7 +153,7 @@ private fun SpaceBackground(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun MainMenu(onPlay: () -> Unit, onShip: () -> Unit, onGalaxy: () -> Unit) {
+private fun MainMenu(onPlay: () -> Unit, onShip: () -> Unit, onGalaxy: () -> Unit, onSettings: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         SpaceBackground()
 
@@ -210,7 +211,7 @@ private fun MainMenu(onPlay: () -> Unit, onShip: () -> Unit, onGalaxy: () -> Uni
                 text = "CONFIGURAÇÕES",
                 icon = Icons.Default.Settings,
                 primary = false,
-                onClick = {}
+                onClick = onSettings
             )
 
             Spacer(Modifier.weight(0.75f))
@@ -529,7 +530,7 @@ private fun MissionReward(mission: Mission, onBack: () -> Unit, onReplay: () -> 
                 Text("${mission.targetKills} inimigos neutralizados", color = White.copy(alpha = 0.55f), fontSize = 12.sp)
             }
             Spacer(Modifier.height(28.dp))
-            MenuButton("CONTINUAR", Icons.Default.PlayArrow, true, onReplay)
+            MenuButton("REPETIR MISSÃO", Icons.Default.PlayArrow, true, onReplay)
             Spacer(Modifier.height(12.dp))
             MenuButton("MENU PRINCIPAL", Icons.Default.ArrowBack, false, onBack)
         }
@@ -537,7 +538,33 @@ private fun MissionReward(mission: Mission, onBack: () -> Unit, onReplay: () -> 
 }
 
 @Composable
-private fun ShipScreen(stats: ShipStats, credits: Int, onSpend: (Int) -> Unit, onBack: () -> Unit) {
+private fun SettingsScreen(onBack: () -> Unit) {
+    Box(Modifier.fillMaxSize()) {
+        SpaceBackground()
+        Column(Modifier.fillMaxSize().padding(22.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = White,
+                    modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp))
+                        .background(White.copy(alpha = 0.07f)).clickable(onClick = onBack).padding(9.dp))
+                Spacer(Modifier.width(12.dp))
+                Text("CONFIGURAÇÕES", color = White, fontSize = 18.sp, fontWeight = FontWeight.Black, letterSpacing = 1.5.sp)
+            }
+            Spacer(Modifier.height(28.dp))
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp))
+                .background(White.copy(alpha = 0.06f))
+                .border(1.dp, White.copy(alpha = 0.12f), RoundedCornerShape(22.dp)).padding(20.dp)) {
+                Text("GALAXY FRONTIER", color = NeonCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                Text("Protótipo Mobile 0.1", color = White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Text("Configurações avançadas serão adicionadas nas próximas versões.",
+                    color = White.copy(alpha = 0.45f), fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun ShipScreen(stats: ShipStats, credits: Int, onUpgrade: (Int, ShipStats) -> Unit, onBack: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         SpaceBackground()
         Column(Modifier.fillMaxSize().padding(18.dp)) {
@@ -584,11 +611,11 @@ private fun ShipScreen(stats: ShipStats, credits: Int, onSpend: (Int) -> Unit, o
             Spacer(Modifier.height(18.dp))
             Text("ATRIBUTOS", color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
             Spacer(Modifier.height(10.dp))
-            ShipStat("HULL", stats.hull, ElectricBlue) { if (credits >= 50 && stats.hull < 5) { onSpend(credits - 50); stats.hull++ } }
-            ShipStat("SHIELD", stats.shield, NeonCyan) { if (credits >= 50 && stats.shield < 5) { onSpend(credits - 50); stats.shield++ } }
-            ShipStat("ENERGY", stats.energy, Violet) { if (credits >= 50 && stats.energy < 5) { onSpend(credits - 50); stats.energy++ } }
-            ShipStat("DAMAGE", stats.damage, ElectricBlue) { if (credits >= 75 && stats.damage < 5) { onSpend(credits - 75); stats.damage++ } }
-            ShipStat("SPEED", stats.speed, NeonCyan) { if (credits >= 75 && stats.speed < 5) { onSpend(credits - 75); stats.speed++ } }
+            ShipStat("HULL", stats.hull, ElectricBlue) { if (credits >= 50 && stats.hull < 5) { onUpgrade(credits - 50, stats.copy(hull = stats.hull + 1)) } }
+            ShipStat("SHIELD", stats.shield, NeonCyan) { if (credits >= 50 && stats.shield < 5) { onUpgrade(credits - 50, stats.copy(shield = stats.shield + 1)) } }
+            ShipStat("ENERGY", stats.energy, Violet) { if (credits >= 50 && stats.energy < 5) { onUpgrade(credits - 50, stats.copy(energy = stats.energy + 1)) } }
+            ShipStat("DAMAGE", stats.damage, ElectricBlue) { if (credits >= 75 && stats.damage < 5) { onUpgrade(credits - 75, stats.copy(damage = stats.damage + 1)) } }
+            ShipStat("SPEED", stats.speed, NeonCyan) { if (credits >= 75 && stats.speed < 5) { onUpgrade(credits - 75, stats.copy(speed = stats.speed + 1)) } }
             Spacer(Modifier.height(10.dp))
             Text("Cada melhoria aumenta um atributo da nave.", color = White.copy(alpha = 0.4f), fontSize = 10.sp)
         }
