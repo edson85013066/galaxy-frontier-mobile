@@ -579,26 +579,26 @@ private fun GalaxyMap(selectedMission: Mission, onSelect: (Mission) -> Unit, onB
                         if (selected) drawCircle(NeonCyan.copy(alpha = .22f), 30f, p, style = Stroke(2f))
                     }
                 }
-                Row(Modifier.fillMaxWidth().align(Alignment.TopCenter).padding(top = 18.dp),
-                    horizontalArrangement = Arrangement.Center) {
-                    missions.forEachIndexed { index, mission ->
-                        val selected = index == selectedIndex
-                        Box(
-                            Modifier.clip(RoundedCornerShape(18.dp))
-                                .background(if (selected) NeonCyan.copy(alpha = .16f) else White.copy(alpha = .06f))
-                                .border(1.dp, if (selected) NeonCyan.copy(alpha = .55f) else White.copy(alpha = .10f), RoundedCornerShape(18.dp))
-                                .clickable {
-                                    selectedIndex = index
-                                    onSelect(mission)
-                                }
-                                .padding(horizontal = 14.dp, vertical = 9.dp)
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("SETOR " + (index + 1), color = if (selected) NeonCyan else White, fontSize = 10.sp, fontWeight = FontWeight.Black)
-                                Text(mission.difficulty, color = White.copy(alpha = .45f), fontSize = 8.sp)
-                            }
+                // Os nós desbloqueados agora são os próprios alvos de toque.
+                missions.forEachIndexed { index, mission ->
+                    val selected = index == selectedIndex
+                    val node = if (index == 0) Offset(.18f, .22f) else Offset(.50f, .34f)
+                    Box(
+                        Modifier
+                            .align(Alignment.TopStart)
+                            .padding(start = (node.x * 100).toInt().dp, top = (node.y * 100).toInt().dp)
+                            .size(92.dp)
+                            .clip(RoundedCornerShape(46.dp))
+                            .clickable {
+                                selectedIndex = index
+                                onSelect(mission)
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("SETOR " + (index + 1), color = if (selected) NeonCyan else White, fontSize = 9.sp, fontWeight = FontWeight.Black)
+                            Text(mission.difficulty, color = White.copy(alpha = .55f), fontSize = 7.sp)
                         }
-                        if (index < missions.lastIndex) Spacer(Modifier.width(8.dp))
                     }
                 }
                 Column(Modifier.align(Alignment.BottomCenter).padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
