@@ -663,7 +663,7 @@ private fun MissionDefeat(
 private fun GalaxyMap(selectedMission: Mission, unlockedMissions: Int, onSelect: (Mission) -> Unit, onBack: () -> Unit, onPlay: () -> Unit) {
     val missions = listOf(
         Mission("PATRULHA", "Primeiro contato hostil", 5, 3, 125, 250, "FÁCIL"),
-        Mission("CERCO", "Sinais hostis detectados", 8, 4, 200, 400, "MÉDIO")
+        Mission("CERCO", "Sinais hostis detectados", 16, 4, 200, 400, "MÉDIO")
     )
     var selectedIndex by remember { mutableIntStateOf(0) }
 
