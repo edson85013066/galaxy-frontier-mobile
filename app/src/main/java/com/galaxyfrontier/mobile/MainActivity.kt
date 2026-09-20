@@ -465,13 +465,19 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
 
 @Composable
 private fun GalaxyMap(selectedMission: Mission, onSelect: (Mission) -> Unit, onBack: () -> Unit, onPlay: () -> Unit) {
+    val missions = listOf(
+        Mission("PATRULHA", "Primeiro contato hostil", 5, 3, 125, 250, "FÁCIL"),
+        Mission("CERCO", "Sinais hostis detectados", 8, 4, 200, 400, "MÉDIO")
+    )
+    var selectedIndex by remember { mutableIntStateOf(0) }
+
     Box(Modifier.fillMaxSize()) {
         SpaceBackground()
         Column(Modifier.fillMaxSize().padding(18.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = White,
-                    modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(White.copy(alpha = 0.07f))
-                        .clickable(onClick = onBack).padding(9.dp))
+                    modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp))
+                        .background(White.copy(alpha = 0.07f)).clickable(onClick = onBack).padding(9.dp))
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text("GALÁXIA", color = White, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
@@ -480,29 +486,63 @@ private fun GalaxyMap(selectedMission: Mission, onSelect: (Mission) -> Unit, onB
             }
             Spacer(Modifier.height(18.dp))
             Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(28.dp))
-                .background(White.copy(alpha = 0.045f)).border(1.dp, NeonCyan.copy(alpha = 0.12f), RoundedCornerShape(28.dp))) {
+                .background(White.copy(alpha = 0.045f))
+                .border(1.dp, NeonCyan.copy(alpha = 0.12f), RoundedCornerShape(28.dp))) {
                 Canvas(Modifier.fillMaxSize()) {
-                    val nodes = listOf(Offset(.18f,.22f), Offset(.50f,.34f), Offset(.78f,.22f), Offset(.32f,.58f), Offset(.68f,.58f), Offset(.50f,.78f))
+                    val nodes = listOf(
+                        Offset(.18f,.22f), Offset(.50f,.34f), Offset(.78f,.22f),
+                        Offset(.32f,.58f), Offset(.68f,.58f), Offset(.50f,.78f)
+                    )
                     val links = listOf(0 to 1, 1 to 2, 1 to 3, 1 to 4, 3 to 5, 4 to 5)
                     links.forEach { (a,b) ->
-                        drawLine(White.copy(alpha=.10f), Offset(size.width*nodes[a].x,size.height*nodes[a].y), Offset(size.width*nodes[b].x,size.height*nodes[b].y), 2f)
+                        drawLine(White.copy(alpha = .10f),
+                            Offset(size.width * nodes[a].x, size.height * nodes[a].y),
+                            Offset(size.width * nodes[b].x, size.height * nodes[b].y), 2f)
                     }
                     nodes.forEachIndexed { i,n ->
-                        val p=Offset(size.width*n.x,size.height*n.y)
-                        val unlocked=i<2
-                        drawCircle(if(unlocked) NeonCyan else White.copy(alpha=.12f), if(i==1) 15f else 10f,p)
-                        if(i==1) drawCircle(NeonCyan.copy(alpha=.22f),28f,p,style=Stroke(2f))
+                        val p = Offset(size.width * n.x, size.height * n.y)
+                        val unlocked = i < 2
+                        val selected = i == selectedIndex
+                        drawCircle(if (unlocked) NeonCyan else White.copy(alpha = .12f),
+                            if (selected) 18f else 10f, p)
+                        if (selected) drawCircle(NeonCyan.copy(alpha = .22f), 30f, p, style = Stroke(2f))
                     }
                 }
-                Column(Modifier.align(Alignment.BottomCenter).padding(18.dp), horizontalAlignment=Alignment.CenterHorizontally) {
-                    Text("SETOR 01 • ÓRBITA DESCONHECIDA", color=White, fontSize=12.sp, fontWeight=FontWeight.Bold)
-                    Text("MISSÃO DISPONÍVEL", color=NeonCyan, fontSize=10.sp, letterSpacing=1.4.sp)
+                Row(Modifier.fillMaxWidth().align(Alignment.TopCenter).padding(top = 18.dp),
+                    horizontalArrangement = Arrangement.Center) {
+                    missions.forEachIndexed { index, mission ->
+                        val selected = index == selectedIndex
+                        Box(
+                            Modifier.clip(RoundedCornerShape(18.dp))
+                                .background(if (selected) NeonCyan.copy(alpha = .16f) else White.copy(alpha = .06f))
+                                .border(1.dp, if (selected) NeonCyan.copy(alpha = .55f) else White.copy(alpha = .10f), RoundedCornerShape(18.dp))
+                                .clickable {
+                                    selectedIndex = index
+                                    onSelect(mission)
+                                }
+                                .padding(horizontal = 14.dp, vertical = 9.dp)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text("SETOR " + (index + 1), color = if (selected) NeonCyan else White, fontSize = 10.sp, fontWeight = FontWeight.Black)
+                                Text(mission.difficulty, color = White.copy(alpha = .45f), fontSize = 8.sp)
+                            }
+                        }
+                        if (index < missions.lastIndex) Spacer(Modifier.width(8.dp))
+                    }
+                }
+                Column(Modifier.align(Alignment.BottomCenter).padding(18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("SETOR " + (selectedIndex + 1) + " • " + missions[selectedIndex].title,
+                        color = White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text(missions[selectedIndex].subtitle.uppercase(),
+                        color = NeonCyan, fontSize = 10.sp, letterSpacing = 1.4.sp)
                     Spacer(Modifier.height(10.dp))
                     MenuButton("ENTRAR NO SETOR", Icons.Default.PlayArrow, true, onPlay)
                 }
             }
             Spacer(Modifier.height(12.dp))
-            Text("Novos setores serão desbloqueados conforme sua exploração.", color=White.copy(alpha=.38f), fontSize=10.sp, textAlign=TextAlign.Center, modifier=Modifier.fillMaxWidth())
+            Text("Selecione um setor disponível para iniciar a missão.",
+                color = White.copy(alpha=.38f), fontSize = 10.sp, textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth())
         }
     }
 }
