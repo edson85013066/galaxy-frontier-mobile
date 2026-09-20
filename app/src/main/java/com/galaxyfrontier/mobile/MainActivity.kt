@@ -282,31 +282,58 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
     var energy by remember { mutableFloatStateOf(stats.energy.toFloat()) }
     var fireCooldown by remember { mutableFloatStateOf(0f) }
     var message by remember { mutableStateOf("INIMIGO DETECTADO") }
+    var combatEnded by remember { mutableStateOf(false) }
     val projectiles = remember { mutableStateListOf<Projectile>() }
     val explosions = remember { mutableStateListOf<Explosion>() }
 
     LaunchedEffect(Unit) {
         while (true) {
             kotlinx.coroutines.delay(25)
-            projectiles.forEach { p ->
-                val dx = p.targetX - p.x
-                val dy = p.targetY - p.y
-                val distance = sqrt(dx * dx + dy * dy)
-                if (distance < 0.018f) {
-                    explosions.add(Explosion(p.targetX, p.targetY, System.currentTimeMillis()))
-                    if (enemyHp > 0) {
-                        enemyHp -= stats.damage
-                        message = "IMPACTO!"
-                        if (enemyHp <= 0) {
-                            kills++
-                            streak++
-                            xp += 50
-                            credits += 25
-                            onCreditEarned()
-                            if (xp >= level * 100) {
-                                xp -= level * 100
-                                level++
-                                energy = stats.energy.toFloat()
+            if (!combatEnded) {
+                projectiles.toList().forEach { p ->
+                    if (combatEnded) return@forEach
+                    val dx = p.targetX - p.x
+                    val dy = p.targetY - p.y
+                    val distance = sqrt(dx * dx + dy * dy)
+                    if (distance < 0.018f) {
+                        projectiles.remove(p)
+                        explosions.add(Explosion(p.targetX, p.targetY, System.currentTimeMillis()))
+                        if (enemyHp > 0) {
+                            enemyHp -= stats.damage
+                            message = "IMPACTO!"
+                            if (enemyHp <= 0) {
+                                kills++
+                                streak++
+                                xp += 50
+                                credits += 25
+                                onCreditEarned()
+                                if (xp >= level * 100) {
+                                    xp -= level * 100
+                                    level++
+                                    energy = stats.energy.toFloat()
+                                    message = "NÍVEL $level • +25 CRÉDITOS"
+                                } else {
+                                    message = "ALVO DESTRUÍDO • +25"
+                                }
+                                if (kills >= mission.targetKills) {
+                                    combatEnded = true
+                                    projectiles.clear()
+                                    onMissionComplete()
+                                } else {
+                                    projectiles.clear()
+                                    enemyHp = mission.enemyHp
+                                    enemyX = Random.nextFloat() * 0.68f + 0.16f
+                                    enemyY = 0.18f
+                                }
+                            }
+                        }
+                    } else {
+                        p.x += dx * 0.16f
+                        p.y += dy * 0.16f
+                    }
+                }
+            }
+            energy = stats.energy.toFloat()
                                 message = "NÍVEL $level • +25 CRÉDITOS"
                             } else {
                                 message = "ALVO DESTRUÍDO • +25"
@@ -337,16 +364,16 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
             val now = System.currentTimeMillis()
             explosions.removeAll { now - it.createdAt > 520L }
 
-            enemyX += if (enemyX < shipX) 0.0025f else -0.0025f
+            if (!combatEnded) enemyX += if (enemyX < shipX) 0.0025f else -0.0025f
             enemyX = enemyX.coerceIn(0.16f, 0.84f)
-            enemyY += 0.0007f
-            if (enemyY > 0.58f) {
+            if (!combatEnded) enemyY += 0.0007f
+            if (!combatEnded && enemyY > 0.58f) {
                 enemyY = 0.18f
                 enemyX = Random.nextFloat() * 0.68f + 0.16f
                 streak = 0
                 shield = (shield - 0.08f).coerceAtLeast(0f)
                 if (shield <= 0f) hull = (hull - 0.06f).coerceAtLeast(0f)
-                if (hull <= 0f) { message = "NAVE DESTRUÍDA"; onBack() } else { message = "ALERTA" }
+                if (hull <= 0f) { combatEnded = true; projectiles.clear(); message = "NAVE DESTRUÍDA"; onBack() } else { message = "ALERTA" }
             }
         }
     }
@@ -384,8 +411,8 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                 )
                 Spacer(Modifier.width(10.dp))
                 Column {
-                    Text("SETOR 01", color = White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                    Text("ÓRBITA DESCONHECIDA", color = White.copy(alpha = 0.45f), fontSize = 10.sp)
+                    Text(mission.title, color = White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    Text(mission.subtitle, color = White.copy(alpha = 0.45f), fontSize = 10.sp)
                 }
                 Spacer(Modifier.weight(1f))
                 HudChip("LV $level")
@@ -418,7 +445,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
 
                 Text(
                     message,
-                    color = if (message == "ALVO DESTRUÍDO") NeonCyan else White.copy(alpha = 0.72f),
+                    color = if (message.startsWith("ALVO DESTRUÍDO") || message.startsWith("NÍVEL")) NeonCyan else White.copy(alpha = 0.72f),
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 1.8.sp,
