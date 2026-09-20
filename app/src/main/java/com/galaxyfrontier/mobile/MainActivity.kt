@@ -284,6 +284,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
     var shipY by remember { mutableFloatStateOf(0.72f) }
     var enemyX by remember { mutableFloatStateOf(0.5f) }
     var enemyY by remember { mutableFloatStateOf(0.25f) }
+    var enemyDirection by remember { mutableFloatStateOf(1f) }
     var enemyHp by remember { mutableIntStateOf(mission.enemyHp) }
     var hull by remember { mutableFloatStateOf(stats.hull.toFloat()) }
     var shield by remember { mutableFloatStateOf(stats.shield.toFloat()) }
@@ -301,7 +302,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
     var shieldHitFlash by remember { mutableFloatStateOf(0f) }
     var joystickX by remember { mutableFloatStateOf(0f) }
     var joystickY by remember { mutableFloatStateOf(0f) }
-    var message by remember { mutableStateOf("INIMIGO DETECTADO") }
+    var message by remember { mutableStateOf("INIMIGO DETECTADO • MIRA MANUAL") }
     var combatEnded by remember { mutableStateOf(false) }
     val projectiles = remember { mutableStateListOf<Projectile>() }
     val explosions = remember { mutableStateListOf<Explosion>() }
@@ -317,14 +318,16 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
             if (!combatEnded) {
                 projectiles.toList().forEach { p ->
                     if (combatEnded) return@forEach
-                    val dx = p.targetX - p.x
-                    val dy = p.targetY - p.y
+                    // Disparo arcade: o projétil segue reto para cima.
+                    // Não existe mais mira automática/homing no inimigo.
+                    val dx = enemyX - p.x
+                    val dy = enemyY - p.y
                     val distance = sqrt(dx * dx + dy * dy)
-                    if (distance < 0.035f) {
+                    if (distance < 0.055f) {
                         projectiles.remove(p)
                         enemyHitFlash = 1f
                         tone.startTone(ToneGenerator.TONE_PROP_ACK, 55)
-                        explosions.add(Explosion(p.targetX, p.targetY, System.currentTimeMillis()))
+                        explosions.add(Explosion(enemyX, enemyY, System.currentTimeMillis()))
                         if (enemyHp > 0) {
                             enemyHp -= p.damage
                             message = "IMPACTO!"
@@ -352,21 +355,18 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                                     projectiles.clear()
                                     enemyHp = mission.enemyHp
                                     enemyX = Random.nextFloat() * 0.68f + 0.16f
+                                    enemyDirection = if (Random.nextBoolean()) 1f else -1f
                                     enemyY = 0.18f
                                 }
                             }
                         }
                     } else {
-                        p.x += dx * 0.16f
-                        p.y += dy * 0.16f
+                        p.y -= 0.028f
                     }
                 }
 
-                projectiles.removeAll { p ->
-                    val dx = p.targetX - p.x
-                    val dy = p.targetY - p.y
-                    sqrt(dx * dx + dy * dy) < 0.02f
-                }
+                // Remove tiros que saíram da arena.
+                projectiles.removeAll { p -> p.y < 0.04f }
 
                 energy = (energy + 0.0035f).coerceAtMost(stats.energy.toFloat())
                 fireCooldown = (fireCooldown - 0.025f).coerceAtLeast(0f)
@@ -377,9 +377,16 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                 val now = System.currentTimeMillis()
                 explosions.removeAll { now - it.createdAt > 520L }
 
-                enemyX += if (enemyX < shipX) 0.0025f else -0.0025f
-                enemyX = enemyX.coerceIn(0.16f, 0.84f)
-                enemyY += 0.0007f
+                // O inimigo não acompanha mais a nave. Ele faz uma trajetória própria.
+                enemyX += enemyDirection * 0.0045f
+                if (enemyX >= 0.84f) {
+                    enemyX = 0.84f
+                    enemyDirection = -1f
+                } else if (enemyX <= 0.16f) {
+                    enemyX = 0.16f
+                    enemyDirection = 1f
+                }
+                enemyY += 0.0009f
 
                 val flightSpeed = 0.0060f + stats.speed * 0.0012f
                 shipX = (shipX + joystickX * flightSpeed).coerceIn(0.12f, 0.88f)
@@ -388,6 +395,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                 if (enemyY > 0.58f) {
                     enemyY = 0.18f
                     enemyX = Random.nextFloat() * 0.68f + 0.16f
+                    enemyDirection = if (Random.nextBoolean()) 1f else -1f
                     streak = 0
                     shieldHitFlash = 1f
                     shield = (shield - 0.08f).coerceAtLeast(0f)
@@ -425,7 +433,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
         shots++
         energy = (energy - 0.05f).coerceAtLeast(0f)
         fireCooldown = 0.12f
-        projectiles.add(Projectile(shipX, shipY - 0.02f, enemyX, enemyY, stats.damage))
+        projectiles.add(Projectile(shipX, shipY - 0.035f, shipX, 0f, stats.damage))
         tone.startTone(ToneGenerator.TONE_DTMF_5, 45)
         message = "DISPARO"
     }
@@ -538,8 +546,8 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
                         .padding(end = 18.dp, bottom = 18.dp)
-                        .size(104.dp)
-                        .clip(RoundedCornerShape(52.dp))
+                        .size(120.dp)
+                        .clip(RoundedCornerShape(60.dp))
                         .alpha(if (canFire) 1f else 0.42f)
                         .background(
                             Brush.radialGradient(
@@ -549,7 +557,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                                 )
                             )
                         )
-                        .border(2.dp, (if (canFire) NeonCyan else White).copy(alpha = if (canFire) 0.55f else 0.18f), RoundedCornerShape(52.dp))
+                        .border(2.dp, (if (canFire) NeonCyan else White).copy(alpha = if (canFire) 0.55f else 0.18f), RoundedCornerShape(60.dp))
                         .clickable { fire() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -578,7 +586,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                 )
 
                 Text(
-                    "JOYSTICK: PILOTE  •  ATIRAR: DIREITA",
+                    "PILOTE À ESQUERDA  •  ATIRE À DIREITA  •  MIRA MANUAL",
                     color = White.copy(alpha = 0.35f),
                     fontSize = 9.sp,
                     letterSpacing = 1.0.sp,
