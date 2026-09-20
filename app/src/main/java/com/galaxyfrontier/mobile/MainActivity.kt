@@ -323,6 +323,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                             if (enemyHp <= 0) {
                                 kills++
                                 streak++
+                                bestStreak = maxOf(bestStreak, streak)
                                 xp += 50
                                 credits += 25
                                 onCreditEarned()
@@ -351,57 +352,47 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                         p.y += dy * 0.16f
                     }
                 }
-            }
-            energy = stats.energy.toFloat()
-                                message = "NÍVEL $level • +25 CRÉDITOS"
-                            } else {
-                                message = "ALVO DESTRUÍDO • +25"
-                            }
-                            if (kills >= mission.targetKills) {
-                                projectiles.clear()
-                                onMissionComplete()
-                            } else {
-                                projectiles.clear()
-                                enemyHp = mission.enemyHp
-                                enemyX = Random.nextFloat() * 0.68f + 0.16f
-                                enemyY = 0.18f
-                            }
-                        }
-                    }
-                } else {
-                    p.x += dx * 0.16f
-                    p.y += dy * 0.16f
-                }
-            }
-            projectiles.removeAll { p ->
-                val dx = p.targetX - p.x
-                val dy = p.targetY - p.y
-                sqrt(dx * dx + dy * dy) < 0.02f
-            }
-            energy = (energy + 0.0008f).coerceAtMost(stats.energy.toFloat())
-            fireCooldown = (fireCooldown - 0.025f).coerceAtLeast(0f)
-            enemyHitFlash = (enemyHitFlash - 0.08f).coerceAtLeast(0f)
-            shipHitFlash = (shipHitFlash - 0.07f).coerceAtLeast(0f)
-            shieldHitFlash = (shieldHitFlash - 0.06f).coerceAtLeast(0f)
-            val now = System.currentTimeMillis()
-            explosions.removeAll { now - it.createdAt > 520L }
 
-            if (!combatEnded) enemyX += if (enemyX < shipX) 0.0025f else -0.0025f
-            enemyX = enemyX.coerceIn(0.16f, 0.84f)
-            if (!combatEnded) enemyY += 0.0007f
-            if (!combatEnded && enemyY > 0.58f) {
-                enemyY = 0.18f
-                enemyX = Random.nextFloat() * 0.68f + 0.16f
-                streak = 0
-                shieldHitFlash = 1f
-                shield = (shield - 0.08f).coerceAtLeast(0f)
-                if (shield <= 0f) {
-                    hull = (hull - 0.06f).coerceAtLeast(0f)
-                    shipHitFlash = 1f
-                } else {
-                    shipHitFlash = 0.65f
+                projectiles.removeAll { p ->
+                    val dx = p.targetX - p.x
+                    val dy = p.targetY - p.y
+                    sqrt(dx * dx + dy * dy) < 0.02f
                 }
-                if (hull <= 0f) { combatEnded = true; projectiles.clear(); message = "NAVE DESTRUÍDA"; onDestroyed() } else { message = "ALERTA" }
+
+                energy = (energy + 0.0008f).coerceAtMost(stats.energy.toFloat())
+                fireCooldown = (fireCooldown - 0.025f).coerceAtLeast(0f)
+                enemyHitFlash = (enemyHitFlash - 0.08f).coerceAtLeast(0f)
+                shipHitFlash = (shipHitFlash - 0.07f).coerceAtLeast(0f)
+                shieldHitFlash = (shieldHitFlash - 0.06f).coerceAtLeast(0f)
+
+                val now = System.currentTimeMillis()
+                explosions.removeAll { now - it.createdAt > 520L }
+
+                enemyX += if (enemyX < shipX) 0.0025f else -0.0025f
+                enemyX = enemyX.coerceIn(0.16f, 0.84f)
+                enemyY += 0.0007f
+
+                if (enemyY > 0.58f) {
+                    enemyY = 0.18f
+                    enemyX = Random.nextFloat() * 0.68f + 0.16f
+                    streak = 0
+                    shieldHitFlash = 1f
+                    shield = (shield - 0.08f).coerceAtLeast(0f)
+                    if (shield <= 0f) {
+                        hull = (hull - 0.06f).coerceAtLeast(0f)
+                        shipHitFlash = 1f
+                    } else {
+                        shipHitFlash = 0.65f
+                    }
+                    if (hull <= 0f) {
+                        combatEnded = true
+                        projectiles.clear()
+                        message = "NAVE DESTRUÍDA"
+                        onDestroyed()
+                    } else {
+                        message = "ALERTA"
+                    }
+                }
             }
         }
     }
