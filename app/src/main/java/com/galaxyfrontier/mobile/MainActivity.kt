@@ -629,8 +629,8 @@ private fun MissionReward(mission: Mission, onBack: () -> Unit, onReplay: () -> 
         ) {
             Text("MISSÃO CONCLUÍDA", color = NeonCyan, fontSize = 14.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.5.sp)
             Spacer(Modifier.height(12.dp))
-            Text("SETOR 01", color = White, fontSize = 42.sp, fontWeight = FontWeight.Black, letterSpacing = 3.sp)
-            Text("ÓRBITA DESCONHECIDA", color = White.copy(alpha = 0.55f), fontSize = 12.sp, letterSpacing = 1.5.sp)
+            Text(mission.title, color = White, fontSize = 42.sp, fontWeight = FontWeight.Black, letterSpacing = 3.sp)
+            Text(mission.subtitle.uppercase(), color = White.copy(alpha = 0.55f), fontSize = 12.sp, letterSpacing = 1.5.sp)
             Spacer(Modifier.height(28.dp))
             Column(
                 modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(White.copy(alpha = 0.07f)).border(1.dp, NeonCyan.copy(alpha = 0.18f), RoundedCornerShape(24.dp)).padding(22.dp),
