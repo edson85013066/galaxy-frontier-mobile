@@ -60,7 +60,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-private enum class Screen { MENU, GAME, SHIP, REWARD, GALAXY, SETTINGS }
+private enum class Screen { MENU, GAME, SHIP, REWARD, DEFEAT, GALAXY, SETTINGS }
 
 private data class Projectile(var x: Float, var y: Float, val targetX: Float, val targetY: Float, val damage: Int)
 private data class Explosion(val x: Float, val y: Float, val createdAt: Long)
@@ -107,9 +107,10 @@ private fun GalaxyFrontierApp() {
     ) { current ->
         when (current) {
             Screen.MENU -> MainMenu(onPlay = { screen = Screen.GAME }, onShip = { screen = Screen.SHIP }, onGalaxy = { screen = Screen.GALAXY }, onSettings = { screen = Screen.SETTINGS })
-            Screen.GAME -> PrototypeGame(stats = shipStats.value, mission = selectedMission, onBack = { screen = Screen.GALAXY }, onCreditEarned = { credits += 25; saveProgress() }, onMissionComplete = { credits += selectedMission.rewardCredits; unlockedMissions = maxOf(unlockedMissions, if (selectedMission.title == "PATRULHA") 2 else unlockedMissions); saveProgress(); screen = Screen.REWARD })
+            Screen.GAME -> PrototypeGame(stats = shipStats.value, mission = selectedMission, onBack = { screen = Screen.GALAXY }, onDestroyed = { screen = Screen.DEFEAT }, onCreditEarned = { credits += 25; saveProgress() }, onMissionComplete = { credits += selectedMission.rewardCredits; unlockedMissions = maxOf(unlockedMissions, if (selectedMission.title == "PATRULHA") 2 else unlockedMissions); saveProgress(); screen = Screen.REWARD })
             Screen.SHIP -> ShipScreen(stats = shipStats.value, credits = credits, onUpgrade = { newCredits, newStats -> credits = newCredits; shipStats.value = newStats; saveProgress() }, onBack = { screen = Screen.MENU })
             Screen.REWARD -> MissionReward(mission = selectedMission, onBack = { screen = Screen.GALAXY }, onReplay = { screen = Screen.GAME })
+            Screen.DEFEAT -> MissionDefeat(mission = selectedMission, onBack = { screen = Screen.GALAXY }, onReplay = { screen = Screen.GAME })
             Screen.GALAXY -> GalaxyMap(selectedMission = selectedMission, unlockedMissions = unlockedMissions, onSelect = { selectedMission = it }, onBack = { screen = Screen.MENU }, onPlay = { screen = Screen.GAME })
             Screen.SETTINGS -> SettingsScreen(onBack = { screen = Screen.MENU })
         }
@@ -274,7 +275,7 @@ private fun MenuButton(
 }
 
 @Composable
-private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit, onCreditEarned: () -> Unit, onMissionComplete: () -> Unit) {
+private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit, onDestroyed: () -> Unit, onCreditEarned: () -> Unit, onMissionComplete: () -> Unit) {
     var shipX by remember { mutableFloatStateOf(0.5f) }
     var shipY by remember { mutableFloatStateOf(0.72f) }
     var enemyX by remember { mutableFloatStateOf(0.5f) }
@@ -397,7 +398,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                 } else {
                     shipHitFlash = 0.65f
                 }
-                if (hull <= 0f) { combatEnded = true; projectiles.clear(); message = "NAVE DESTRUÍDA"; onBack() } else { message = "ALERTA" }
+                if (hull <= 0f) { combatEnded = true; projectiles.clear(); message = "NAVE DESTRUÍDA"; onDestroyed() } else { message = "ALERTA" }
             }
         }
     }
@@ -586,6 +587,78 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                     }
                 }
                 HudChip("KILLS $kills • +$credits CR")
+            }
+        }
+    }
+}
+
+@Composable
+private fun MissionDefeat(
+    mission: Mission,
+    onBack: () -> Unit,
+    onReplay: () -> Unit
+) {
+    Box(Modifier.fillMaxSize()) {
+        SpaceBackground()
+        Column(
+            Modifier.fillMaxSize().padding(24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text(
+                "NAVE DESTRUÍDA",
+                color = White,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Black,
+                letterSpacing = 2.sp,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(10.dp))
+            Text(
+                mission.title,
+                color = NeonCyan,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.5.sp
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "A missão foi interrompida antes da conclusão.",
+                color = White.copy(alpha = 0.58f),
+                fontSize = 12.sp,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(28.dp))
+            Box(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp))
+                    .background(White.copy(alpha = 0.055f))
+                    .border(1.dp, Violet.copy(alpha = 0.22f), RoundedCornerShape(24.dp))
+                    .padding(22.dp)
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("SEM RECOMPENSA DE MISSÃO", color = White.copy(alpha = 0.72f), fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.2.sp)
+                    Spacer(Modifier.height(8.dp))
+                    Text("Sua nave foi perdida neste setor.", color = White.copy(alpha = 0.42f), fontSize = 10.sp, textAlign = TextAlign.Center)
+                }
+            }
+            Spacer(Modifier.height(24.dp))
+            Box(
+                Modifier.fillMaxWidth().height(54.dp).clip(RoundedCornerShape(18.dp))
+                    .background(Brush.horizontalGradient(listOf(NeonCyan.copy(alpha = .28f), Violet.copy(alpha = .24f))))
+                    .border(1.dp, NeonCyan.copy(alpha = .42f), RoundedCornerShape(18.dp))
+                    .clickable(onClick = onReplay),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("TENTAR NOVAMENTE", color = White, fontSize = 13.sp, fontWeight = FontWeight.Black, letterSpacing = 1.2.sp)
+            }
+            Spacer(Modifier.height(10.dp))
+            Box(
+                Modifier.fillMaxWidth().height(50.dp).clip(RoundedCornerShape(18.dp))
+                    .background(White.copy(alpha = .055f))
+                    .clickable(onClick = onBack),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("VOLTAR À GALÁXIA", color = White.copy(alpha = .75f), fontSize = 12.sp, fontWeight = FontWeight.Bold, letterSpacing = 1f)
             }
         }
     }
