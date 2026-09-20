@@ -290,6 +290,8 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
     var streak by remember { mutableIntStateOf(0) }
     var energy by remember { mutableFloatStateOf(stats.energy.toFloat()) }
     var fireCooldown by remember { mutableFloatStateOf(0f) }
+    var joystickX by remember { mutableFloatStateOf(0f) }
+    var joystickY by remember { mutableFloatStateOf(0f) }
     var message by remember { mutableStateOf("INIMIGO DETECTADO") }
     var combatEnded by remember { mutableStateOf(false) }
     val projectiles = remember { mutableStateListOf<Projectile>() }
@@ -461,8 +463,19 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                         .background(White.copy(alpha = 0.07f))
                         .border(1.dp, NeonCyan.copy(alpha = 0.18f), RoundedCornerShape(56.dp))
                         .pointerInput(Unit) {
-                            detectDragGestures { change, dragAmount ->
+                            detectDragGestures(
+                                onDragEnd = {
+                                    joystickX = 0f
+                                    joystickY = 0f
+                                },
+                                onDragCancel = {
+                                    joystickX = 0f
+                                    joystickY = 0f
+                                }
+                            ) { change, dragAmount ->
                                 change.consume()
+                                joystickX = (joystickX + dragAmount.x / 52f).coerceIn(-1f, 1f)
+                                joystickY = (joystickY + dragAmount.y / 52f).coerceIn(-1f, 1f)
                                 val sensitivity = 0.75f + stats.speed * 0.12f
                                 shipX = (shipX + dragAmount.x / size.width * sensitivity).coerceIn(0.12f, 0.88f)
                                 shipY = (shipY + dragAmount.y / size.height * sensitivity).coerceIn(0.38f, 0.86f)
@@ -470,12 +483,34 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                         },
                     contentAlignment = Alignment.Center
                 ) {
+                    Canvas(Modifier.fillMaxSize()) {
+                        val center = Offset(size.width / 2f, size.height / 2f)
+                        val maxTravel = size.minDimension * 0.27f
+                        drawCircle(
+                            color = White.copy(alpha = 0.10f),
+                            radius = size.minDimension * 0.36f,
+                            center = center
+                        )
+                        drawCircle(
+                            color = NeonCyan.copy(alpha = 0.18f),
+                            radius = size.minDimension * 0.24f,
+                            center = center
+                        )
+                        drawCircle(
+                            color = NeonCyan.copy(alpha = 0.72f),
+                            radius = size.minDimension * 0.15f,
+                            center = Offset(
+                                center.x + joystickX * maxTravel,
+                                center.y + joystickY * maxTravel
+                            )
+                        )
+                    }
                     Text(
                         "PILOTAR",
                         color = White.copy(alpha = 0.45f),
-                        fontSize = 9.sp,
+                        fontSize = 8.sp,
                         fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.2.sp
+                        letterSpacing = 1.0.sp
                     )
                 }
 
@@ -489,7 +524,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                 )
 
                 Text(
-                    "DESLIZE NO CONTROLE PARA PILOTAR",
+                    "ARRASTE O JOYSTICK PARA PILOTAR",
                     color = White.copy(alpha = 0.35f),
                     fontSize = 9.sp,
                     letterSpacing = 1.0.sp,
