@@ -98,7 +98,7 @@ private fun GalaxyFrontierApp() {
     ) { current ->
         when (current) {
             Screen.MENU -> MainMenu(onPlay = { screen = Screen.GAME }, onShip = { screen = Screen.SHIP }, onGalaxy = { screen = Screen.GALAXY }, onSettings = { screen = Screen.SETTINGS })
-            Screen.GAME -> PrototypeGame(stats = shipStats.value, mission = selectedMission, onBack = { screen = Screen.GALAXY }, onCreditEarned = { credits += 25 }, onMissionComplete = { screen = Screen.REWARD })
+            Screen.GAME -> PrototypeGame(stats = shipStats.value, mission = selectedMission, onBack = { screen = Screen.GALAXY }, onCreditEarned = { credits += 25 }, onMissionComplete = { credits += selectedMission.rewardCredits; screen = Screen.REWARD })
             Screen.SHIP -> ShipScreen(stats = shipStats.value, credits = credits, onUpgrade = { newCredits, newStats -> credits = newCredits; shipStats.value = newStats }, onBack = { screen = Screen.MENU })
             Screen.REWARD -> MissionReward(mission = selectedMission, onBack = { screen = Screen.GALAXY }, onReplay = { screen = Screen.GAME })
             Screen.GALAXY -> GalaxyMap(selectedMission = selectedMission, onSelect = { selectedMission = it }, onBack = { screen = Screen.MENU }, onPlay = { screen = Screen.GAME })
@@ -312,8 +312,10 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                                 message = "ALVO DESTRUÍDO • +25"
                             }
                             if (kills >= mission.targetKills) {
+                                projectiles.clear()
                                 onMissionComplete()
                             } else {
+                                projectiles.clear()
                                 enemyHp = mission.enemyHp
                                 enemyX = Random.nextFloat() * 0.68f + 0.16f
                                 enemyY = 0.18f
@@ -344,7 +346,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                 streak = 0
                 shield = (shield - 0.08f).coerceAtLeast(0f)
                 if (shield <= 0f) hull = (hull - 0.06f).coerceAtLeast(0f)
-                message = if (hull <= 0f) "NAVE DANIFICADA" else "ALERTA"
+                if (hull <= 0f) { message = "NAVE DESTRUÍDA"; onBack() } else { message = "ALERTA" }
             }
         }
     }
@@ -526,6 +528,7 @@ private fun MissionReward(mission: Mission, onBack: () -> Unit, onReplay: () -> 
                 Text("RECOMPENSAS", color = White.copy(alpha = 0.55f), fontSize = 11.sp, letterSpacing = 2.sp)
                 Spacer(Modifier.height(14.dp))
                 Text("+${mission.rewardCredits} CRÉDITOS", color = NeonCyan, fontSize = 25.sp, fontWeight = FontWeight.Black)
+                Text("RECOMPENSA ADICIONADA AO SALDO", color = White.copy(alpha = 0.38f), fontSize = 9.sp, letterSpacing = 1.2.sp)
                 Text("+${mission.rewardXp} XP", color = White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 Text("${mission.targetKills} inimigos neutralizados", color = White.copy(alpha = 0.55f), fontSize = 12.sp)
             }
