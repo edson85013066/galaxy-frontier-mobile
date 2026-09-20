@@ -94,7 +94,7 @@ private fun GalaxyFrontierApp() {
     val prefs = remember { context.getSharedPreferences("galaxy_frontier_save", Context.MODE_PRIVATE) }
     val shipStats = remember { mutableStateOf(ShipStats(prefs.getInt("hull", 1), prefs.getInt("shield", 1), prefs.getInt("energy", 1), prefs.getInt("damage", 1), prefs.getInt("speed", 1))) }
     var credits by remember { mutableIntStateOf(prefs.getInt("credits", 125)) }
-    var selectedMission by remember { mutableStateOf(Mission("PATRULHA", "Primeiro contato hostil", 5, 3, 125, 250, "FÁCIL")) }
+    var selectedMission by remember { mutableStateOf(Mission("PATRULHA", "Primeiro contato hostil", 10, 3, 125, 250, "FÁCIL")) }
     var unlockedMissions by remember { mutableIntStateOf(prefs.getInt("unlocked_missions", 1)) }
     var lastCombatResult by remember { mutableStateOf(CombatResult(0, 0, 0, 0)) }
 
