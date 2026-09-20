@@ -1,6 +1,7 @@
 package com.galaxyfrontier.mobile
 
 import android.os.Bundle
+import android.content.Context
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -54,6 +55,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -87,10 +89,16 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun GalaxyFrontierApp() {
     var screen by remember { mutableStateOf(Screen.MENU) }
-    val shipStats = remember { mutableStateOf(ShipStats()) }
-    var credits by remember { mutableIntStateOf(125) }
+    val context = LocalContext.current
+    val prefs = remember { context.getSharedPreferences("galaxy_frontier_save", Context.MODE_PRIVATE) }
+    val shipStats = remember { mutableStateOf(ShipStats(prefs.getInt("hull", 1), prefs.getInt("shield", 1), prefs.getInt("energy", 1), prefs.getInt("damage", 1), prefs.getInt("speed", 1))) }
+    var credits by remember { mutableIntStateOf(prefs.getInt("credits", 125)) }
     var selectedMission by remember { mutableStateOf(Mission("PATRULHA", "Primeiro contato hostil", 5, 3, 125, 250, "FÁCIL")) }
-    var unlockedMissions by remember { mutableIntStateOf(1) }
+    var unlockedMissions by remember { mutableIntStateOf(prefs.getInt("unlocked_missions", 1)) }
+
+    fun saveProgress() {
+        prefs.edit().putInt("hull", shipStats.value.hull).putInt("shield", shipStats.value.shield).putInt("energy", shipStats.value.energy).putInt("damage", shipStats.value.damage).putInt("speed", shipStats.value.speed).putInt("credits", credits).putInt("unlocked_missions", unlockedMissions).apply()
+    }
 
     AnimatedContent(
         targetState = screen,
@@ -99,8 +107,8 @@ private fun GalaxyFrontierApp() {
     ) { current ->
         when (current) {
             Screen.MENU -> MainMenu(onPlay = { screen = Screen.GAME }, onShip = { screen = Screen.SHIP }, onGalaxy = { screen = Screen.GALAXY }, onSettings = { screen = Screen.SETTINGS })
-            Screen.GAME -> PrototypeGame(stats = shipStats.value, mission = selectedMission, onBack = { screen = Screen.GALAXY }, onCreditEarned = { credits += 25 }, onMissionComplete = { credits += selectedMission.rewardCredits; unlockedMissions = maxOf(unlockedMissions, if (selectedMission.title == "PATRULHA") 2 else unlockedMissions); screen = Screen.REWARD })
-            Screen.SHIP -> ShipScreen(stats = shipStats.value, credits = credits, onUpgrade = { newCredits, newStats -> credits = newCredits; shipStats.value = newStats }, onBack = { screen = Screen.MENU })
+            Screen.GAME -> PrototypeGame(stats = shipStats.value, mission = selectedMission, onBack = { screen = Screen.GALAXY }, onCreditEarned = { credits += 25; saveProgress() }, onMissionComplete = { credits += selectedMission.rewardCredits; unlockedMissions = maxOf(unlockedMissions, if (selectedMission.title == "PATRULHA") 2 else unlockedMissions); saveProgress(); screen = Screen.REWARD })
+            Screen.SHIP -> ShipScreen(stats = shipStats.value, credits = credits, onUpgrade = { newCredits, newStats -> credits = newCredits; shipStats.value = newStats; saveProgress() }, onBack = { screen = Screen.MENU })
             Screen.REWARD -> MissionReward(mission = selectedMission, onBack = { screen = Screen.GALAXY }, onReplay = { screen = Screen.GAME })
             Screen.GALAXY -> GalaxyMap(selectedMission = selectedMission, unlockedMissions = unlockedMissions, onSelect = { selectedMission = it }, onBack = { screen = Screen.MENU }, onPlay = { screen = Screen.GAME })
             Screen.SETTINGS -> SettingsScreen(onBack = { screen = Screen.MENU })
