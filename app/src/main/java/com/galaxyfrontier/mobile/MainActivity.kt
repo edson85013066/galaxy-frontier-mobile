@@ -59,6 +59,9 @@ import kotlin.random.Random
 
 private enum class Screen { MENU, GAME }
 
+private data class Projectile(var x: Float, var y: Float, val targetX: Float, val targetY: Float)
+private data class Explosion(val x: Float, val y: Float, val createdAt: Long)
+
 private val SpaceBlack = Color(0xFF030511)
 private val DeepBlue = Color(0xFF08133A)
 private val ElectricBlue = Color(0xFF4CC9FF)
@@ -253,10 +256,31 @@ private fun PrototypeGame(onBack: () -> Unit) {
     var shield by remember { mutableFloatStateOf(1f) }
     var shots by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf("INIMIGO DETECTADO") }
+    val projectiles = remember { mutableStateListOf<Projectile>() }
+    val explosions = remember { mutableStateListOf<Explosion>() }
 
     LaunchedEffect(Unit) {
         while (true) {
-            kotlinx.coroutines.delay(35)
+            kotlinx.coroutines.delay(25)
+            projectiles.forEach { p ->
+                val dx = p.targetX - p.x
+                val dy = p.targetY - p.y
+                val distance = sqrt(dx * dx + dy * dy)
+                if (distance < 0.018f) {
+                    explosions.add(Explosion(p.targetX, p.targetY, System.currentTimeMillis()))
+                } else {
+                    p.x += dx * 0.16f
+                    p.y += dy * 0.16f
+                }
+            }
+            projectiles.removeAll { p ->
+                val dx = p.targetX - p.x
+                val dy = p.targetY - p.y
+                sqrt(dx * dx + dy * dy) < 0.02f
+            }
+            val now = System.currentTimeMillis()
+            explosions.removeAll { now - it.createdAt > 520L }
+
             enemyX += if (enemyX < shipX) 0.0025f else -0.0025f
             enemyX = enemyX.coerceIn(0.16f, 0.84f)
             enemyY += 0.0007f
@@ -272,6 +296,7 @@ private fun PrototypeGame(onBack: () -> Unit) {
 
     fun fire() {
         shots++
+        projectiles.add(Projectile(shipX, shipY - 0.02f, enemyX, enemyY))
         val distance = sqrt(
             ((shipX - enemyX) * (shipX - enemyX)) +
                 ((shipY - enemyY) * (shipY - enemyY))
@@ -280,6 +305,7 @@ private fun PrototypeGame(onBack: () -> Unit) {
             enemyHp--
             message = "IMPACTO!"
             if (enemyHp <= 0) {
+                explosions.add(Explosion(enemyX, enemyY, System.currentTimeMillis()))
                 enemyHp = 3
                 enemyX = Random.nextFloat() * 0.68f + 0.16f
                 enemyY = 0.18f
@@ -340,11 +366,7 @@ private fun PrototypeGame(onBack: () -> Unit) {
                     }
             ) {
                 CombatField(
-                    shipX = shipX,
-                    shipY = shipY,
-                    enemyX = enemyX,
-                    enemyY = enemyY,
-                    enemyHp = enemyHp
+                    shipX, shipY, enemyX, enemyY, enemyHp, projectiles, explosions
                 )
 
                 Text(
@@ -400,7 +422,9 @@ private fun CombatField(
     shipY: Float,
     enemyX: Float,
     enemyY: Float,
-    enemyHp: Int
+    enemyHp: Int,
+    projectiles: List<Projectile>,
+    explosions: List<Explosion>
 ) {
     val infinite = rememberInfiniteTransition(label = "combatFx")
     val pulse by infinite.animateFloat(
@@ -416,24 +440,15 @@ private fun CombatField(
 
         repeat(12) { i ->
             val x = size.width * (0.08f + i * 0.08f)
-            drawLine(
-                color = ElectricBlue.copy(alpha = 0.035f),
-                start = Offset(x, 0f),
-                end = Offset(x, size.height),
-                strokeWidth = 1f
-            )
+            drawLine(ElectricBlue.copy(alpha = 0.035f), Offset(x, 0f), Offset(x, size.height), 1f)
         }
 
-        // Energy field around the enemy.
         drawCircle(
-            brush = Brush.radialGradient(
-                listOf(Violet.copy(alpha = 0.28f), Color.Transparent)
-            ),
+            brush = Brush.radialGradient(listOf(Violet.copy(alpha = 0.28f), Color.Transparent)),
             radius = 68f * pulse,
             center = enemy
         )
 
-        // Enemy ship.
         val enemyPath = androidx.compose.ui.graphics.Path().apply {
             moveTo(enemy.x, enemy.y - 32f)
             lineTo(enemy.x - 27f, enemy.y + 20f)
@@ -444,7 +459,6 @@ private fun CombatField(
         drawPath(enemyPath, brush = Brush.verticalGradient(listOf(Color(0xFFFF718C), Violet)))
         drawPath(enemyPath, color = White.copy(alpha = 0.65f), style = Stroke(2f))
 
-        // Enemy health pips.
         repeat(enemyHp) { i ->
             drawRoundRect(
                 color = NeonCyan,
@@ -454,25 +468,38 @@ private fun CombatField(
             )
         }
 
-        // Target reticle.
-        drawCircle(
-            color = NeonCyan.copy(alpha = 0.42f),
-            radius = 43f,
-            center = enemy,
-            style = Stroke(1.5f)
-        )
-        drawLine(
-            color = NeonCyan.copy(alpha = 0.65f),
-            start = Offset(enemy.x - 53f, enemy.y),
-            end = Offset(enemy.x - 34f, enemy.y)
-        )
-        drawLine(
-            color = NeonCyan.copy(alpha = 0.65f),
-            start = Offset(enemy.x + 34f, enemy.y),
-            end = Offset(enemy.x + 53f, enemy.y)
-        )
+        drawCircle(NeonCyan.copy(alpha = 0.42f), 43f, enemy, style = Stroke(1.5f))
+        drawLine(NeonCyan.copy(alpha = 0.65f), Offset(enemy.x - 53f, enemy.y), Offset(enemy.x - 34f, enemy.y))
+        drawLine(NeonCyan.copy(alpha = 0.65f), Offset(enemy.x + 34f, enemy.y), Offset(enemy.x + 53f, enemy.y))
 
-        // Player ship glow.
+        // Plasma projectiles.
+        projectiles.forEach { p ->
+            val point = Offset(size.width * p.x, size.height * p.y)
+            drawCircle(
+                brush = Brush.radialGradient(listOf(White, NeonCyan, Color.Transparent)),
+                radius = 15f,
+                center = point
+            )
+            drawLine(
+                color = ElectricBlue.copy(alpha = 0.7f),
+                start = Offset(point.x, point.y + 18f),
+                end = Offset(point.x, point.y + 5f),
+                strokeWidth = 4f
+            )
+        }
+
+        // Short-lived impact explosions.
+        val now = System.currentTimeMillis()
+        explosions.forEach { explosion ->
+            val age = ((now - explosion.createdAt).coerceAtLeast(0L) / 520f).coerceIn(0f, 1f)
+            val point = Offset(size.width * explosion.x, size.height * explosion.y)
+            val radius = 18f + age * 55f
+            val alpha = 1f - age
+            drawCircle(Color.White.copy(alpha = alpha * 0.85f), radius * 0.35f, point)
+            drawCircle(NeonCyan.copy(alpha = alpha * 0.65f), radius, point, style = Stroke(4f))
+            drawCircle(Violet.copy(alpha = alpha * 0.5f), radius * 0.65f, point, style = Stroke(2f))
+        }
+
         drawCircle(
             brush = Brush.radialGradient(listOf(NeonCyan.copy(alpha = 0.28f), Color.Transparent)),
             radius = 38f,
@@ -491,30 +518,11 @@ private fun CombatField(
         drawPath(shipPath, brush = Brush.verticalGradient(listOf(White, ElectricBlue, Violet)))
         drawPath(shipPath, color = NeonCyan, style = Stroke(2f))
 
-        // Engine trails.
-        drawLine(
-            color = ElectricBlue.copy(alpha = 0.8f),
-            start = Offset(ship.x - 8f, ship.y + 25f),
-            end = Offset(ship.x - 8f, ship.y + 48f),
-            strokeWidth = 5f
-        )
-        drawLine(
-            color = Violet.copy(alpha = 0.75f),
-            start = Offset(ship.x + 8f, ship.y + 25f),
-            end = Offset(ship.x + 8f, ship.y + 48f),
-            strokeWidth = 5f
-        )
+        drawLine(ElectricBlue.copy(alpha = 0.8f), Offset(ship.x - 8f, ship.y + 25f), Offset(ship.x - 8f, ship.y + 48f), 5f)
+        drawLine(Violet.copy(alpha = 0.75f), Offset(ship.x + 8f, ship.y + 25f), Offset(ship.x + 8f, ship.y + 48f), 5f)
 
-        drawCircle(
-            color = SpaceBlack,
-            radius = 7f,
-            center = Offset(ship.x, ship.y - 17f)
-        )
-        drawCircle(
-            color = White,
-            radius = 3.5f,
-            center = Offset(ship.x, ship.y - 17f)
-        )
+        drawCircle(SpaceBlack, 7f, Offset(ship.x, ship.y - 17f))
+        drawCircle(White, 3.5f, Offset(ship.x, ship.y - 17f))
     }
 }
 
