@@ -2,6 +2,8 @@ package com.galaxyfrontier.mobile
 
 import android.os.Bundle
 import android.content.Context
+import android.media.AudioManager
+import android.media.ToneGenerator
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -303,6 +305,11 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
     var combatEnded by remember { mutableStateOf(false) }
     val projectiles = remember { mutableStateListOf<Projectile>() }
     val explosions = remember { mutableStateListOf<Explosion>() }
+    val tone = remember { ToneGenerator(AudioManager.STREAM_MUSIC, 70) }
+
+    DisposableEffect(Unit) {
+        onDispose { tone.release() }
+    }
 
     LaunchedEffect(Unit) {
         while (true) {
@@ -316,6 +323,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                     if (distance < 0.035f) {
                         projectiles.remove(p)
                         enemyHitFlash = 1f
+                        tone.startTone(ToneGenerator.TONE_PROP_ACK, 55)
                         explosions.add(Explosion(p.targetX, p.targetY, System.currentTimeMillis()))
                         if (enemyHp > 0) {
                             enemyHp -= p.damage
@@ -333,7 +341,8 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                                     energy = stats.energy.toFloat()
                                     message = "NÍVEL $level • +25 CRÉDITOS"
                                 } else {
-                                    message = "ALVO DESTRUÍDO • +25"
+                                    tone.startTone(ToneGenerator.TONE_PROP_BEEP2, 90)
+                                message = "ALVO DESTRUÍDO • +25"
                                 }
                                 if (kills >= mission.targetKills) {
                                     combatEnded = true
@@ -392,6 +401,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                         combatEnded = true
                         projectiles.clear()
                         message = "NAVE DESTRUÍDA"
+                        tone.startTone(ToneGenerator.TONE_PROP_NACK, 220)
                         onDestroyed()
                     } else {
                         message = "ALERTA"
@@ -416,6 +426,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
         energy = (energy - 0.05f).coerceAtLeast(0f)
         fireCooldown = 0.12f
         projectiles.add(Projectile(shipX, shipY - 0.02f, enemyX, enemyY, stats.damage))
+        tone.startTone(ToneGenerator.TONE_DTMF_5, 45)
         message = "DISPARO"
     }
 
