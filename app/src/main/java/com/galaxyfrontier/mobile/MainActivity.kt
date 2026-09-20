@@ -524,7 +524,9 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                 }
 
                 Box(
-    modifier = Modifier
+                    modifier = Modifier
+                        .align(Alignment.BottomEnd)
+                        .padding(end = 18.dp, bottom = 18.dp)
                         .size(104.dp)
                         .clip(RoundedCornerShape(52.dp))
                         .alpha(if (canFire) 1f else 0.42f)
@@ -536,7 +538,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                                 )
                             )
                         )
-                        .border(2.dp, (if (canFire) NeonCyan else White).copy(alpha = if (canFire) 0.55f else 0.18f), RoundedCornerShape(26.dp))
+                        .border(2.dp, (if (canFire) NeonCyan else White).copy(alpha = if (canFire) 0.55f else 0.18f), RoundedCornerShape(52.dp))
                         .clickable { fire() },
                     contentAlignment = Alignment.Center
                 ) {
@@ -545,7 +547,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                         Text(
                             text = when {
                                 hull <= 0f -> "INOPERANTE"
-                                energy < 0.12f -> "SEM ENERGIA"
+                                energy < 0.05f -> "SEM ENERGIA"
                                 fireCooldown > 0f -> (kotlin.math.round(fireCooldown * 10f) / 10f).toString() + "s"
                                 else -> "PRONTO"
                             },
@@ -565,7 +567,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                 )
 
                 Text(
-                    "ARRASTE O JOYSTICK PARA PILOTAR",
+                    "JOYSTICK: PILOTE  •  ATIRAR: DIREITA",
                     color = White.copy(alpha = 0.35f),
                     fontSize = 9.sp,
                     letterSpacing = 1.0.sp,
