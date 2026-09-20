@@ -66,6 +66,7 @@ private data class Projectile(var x: Float, var y: Float, val targetX: Float, va
 private data class Explosion(val x: Float, val y: Float, val createdAt: Long)
 private data class ShipStats(val hull: Int = 1, val shield: Int = 1, val energy: Int = 1, val damage: Int = 1, val speed: Int = 1)
 private data class Mission(val title: String, val subtitle: String, val targetKills: Int, val enemyHp: Int, val rewardCredits: Int, val rewardXp: Int, val difficulty: String)
+private data class CombatResult(val kills: Int, val shots: Int, val accuracy: Int, val bestStreak: Int)
 
 private val SpaceBlack = Color(0xFF030511)
 private val DeepBlue = Color(0xFF08133A)
@@ -95,6 +96,7 @@ private fun GalaxyFrontierApp() {
     var credits by remember { mutableIntStateOf(prefs.getInt("credits", 125)) }
     var selectedMission by remember { mutableStateOf(Mission("PATRULHA", "Primeiro contato hostil", 5, 3, 125, 250, "FÁCIL")) }
     var unlockedMissions by remember { mutableIntStateOf(prefs.getInt("unlocked_missions", 1)) }
+    var lastCombatResult by remember { mutableStateOf(CombatResult(0, 0, 0, 0)) }
 
     fun saveProgress() {
         prefs.edit().putInt("hull", shipStats.value.hull).putInt("shield", shipStats.value.shield).putInt("energy", shipStats.value.energy).putInt("damage", shipStats.value.damage).putInt("speed", shipStats.value.speed).putInt("credits", credits).putInt("unlocked_missions", unlockedMissions).apply()
@@ -107,9 +109,9 @@ private fun GalaxyFrontierApp() {
     ) { current ->
         when (current) {
             Screen.MENU -> MainMenu(onPlay = { screen = Screen.GAME }, onShip = { screen = Screen.SHIP }, onGalaxy = { screen = Screen.GALAXY }, onSettings = { screen = Screen.SETTINGS })
-            Screen.GAME -> PrototypeGame(stats = shipStats.value, mission = selectedMission, onBack = { screen = Screen.GALAXY }, onDestroyed = { screen = Screen.DEFEAT }, onCreditEarned = { credits += 25; saveProgress() }, onMissionComplete = { credits += selectedMission.rewardCredits; unlockedMissions = maxOf(unlockedMissions, if (selectedMission.title == "PATRULHA") 2 else unlockedMissions); saveProgress(); screen = Screen.REWARD })
+            Screen.GAME -> PrototypeGame(stats = shipStats.value, mission = selectedMission, onBack = { screen = Screen.GALAXY }, onDestroyed = { screen = Screen.DEFEAT }, onCreditEarned = { credits += 25; saveProgress() }, onMissionComplete = { result -> lastCombatResult = result; credits += selectedMission.rewardCredits; unlockedMissions = maxOf(unlockedMissions, if (selectedMission.title == "PATRULHA") 2 else unlockedMissions); saveProgress(); screen = Screen.REWARD })
             Screen.SHIP -> ShipScreen(stats = shipStats.value, credits = credits, onUpgrade = { newCredits, newStats -> credits = newCredits; shipStats.value = newStats; saveProgress() }, onBack = { screen = Screen.MENU })
-            Screen.REWARD -> MissionReward(mission = selectedMission, onBack = { screen = Screen.GALAXY }, onReplay = { screen = Screen.GAME })
+            Screen.REWARD -> MissionReward(mission = selectedMission, result = lastCombatResult, onBack = { screen = Screen.GALAXY }, onReplay = { screen = Screen.GAME })
             Screen.DEFEAT -> MissionDefeat(mission = selectedMission, onBack = { screen = Screen.GALAXY }, onReplay = { screen = Screen.GAME })
             Screen.GALAXY -> GalaxyMap(selectedMission = selectedMission, unlockedMissions = unlockedMissions, onSelect = { selectedMission = it }, onBack = { screen = Screen.MENU }, onPlay = { screen = Screen.GAME })
             Screen.SETTINGS -> SettingsScreen(onBack = { screen = Screen.MENU })
@@ -275,7 +277,7 @@ private fun MenuButton(
 }
 
 @Composable
-private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit, onDestroyed: () -> Unit, onCreditEarned: () -> Unit, onMissionComplete: () -> Unit) {
+private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit, onDestroyed: () -> Unit, onCreditEarned: () -> Unit, onMissionComplete: (CombatResult) -> Unit) {
     var shipX by remember { mutableFloatStateOf(0.5f) }
     var shipY by remember { mutableFloatStateOf(0.72f) }
     var enemyX by remember { mutableFloatStateOf(0.5f) }
@@ -334,7 +336,7 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                                 if (kills >= mission.targetKills) {
                                     combatEnded = true
                                     projectiles.clear()
-                                    onMissionComplete()
+                                    onMissionComplete(CombatResult(kills, shots, ((kills.toFloat() / shots.coerceAtLeast(1)) * 100f).toInt(), streak))
                                 } else {
                                     projectiles.clear()
                                     enemyHp = mission.enemyHp
@@ -750,7 +752,7 @@ private fun GalaxyMap(selectedMission: Mission, unlockedMissions: Int, onSelect:
 }
 
 @Composable
-private fun MissionReward(mission: Mission, onBack: () -> Unit, onReplay: () -> Unit) {
+private fun MissionReward(mission: Mission, result: CombatResult, onBack: () -> Unit, onReplay: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         SpaceBackground()
         Column(
@@ -773,12 +775,27 @@ private fun MissionReward(mission: Mission, onBack: () -> Unit, onReplay: () -> 
                 Text("RECOMPENSA ADICIONADA AO SALDO", color = White.copy(alpha = 0.38f), fontSize = 9.sp, letterSpacing = 1.2.sp)
                 Text("+${mission.rewardXp} XP", color = White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 Text("${mission.targetKills} inimigos neutralizados", color = White.copy(alpha = 0.55f), fontSize = 12.sp)
+                Spacer(Modifier.height(18.dp))
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    ResultStat("${result.kills}", "KILLS")
+                    ResultStat("${result.shots}", "TIROS")
+                    ResultStat("${result.accuracy}%", "PRECISÃO")
+                    ResultStat("${result.bestStreak}", "STREAK")
+                }
             }
             Spacer(Modifier.height(28.dp))
             MenuButton("REPETIR MISSÃO", Icons.Default.PlayArrow, true, onReplay)
             Spacer(Modifier.height(12.dp))
             MenuButton("MENU PRINCIPAL", Icons.Default.ArrowBack, false, onBack)
         }
+    }
+}
+
+@Composable
+private fun ResultStat(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(value, color = White, fontSize = 16.sp, fontWeight = FontWeight.Black)
+        Text(label, color = White.copy(alpha = 0.38f), fontSize = 8.sp, fontWeight = FontWeight.Bold, letterSpacing = 0.8.sp)
     }
 }
 
