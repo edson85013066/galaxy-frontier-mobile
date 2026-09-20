@@ -431,17 +431,38 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                     .fillMaxWidth()
                     .weight(1f)
                     .clip(RoundedCornerShape(24.dp))
-                    .pointerInput(Unit) {
-                        detectDragGestures { change, dragAmount ->
-                            change.consume()
-                            shipX = (shipX + dragAmount.x / size.width * (0.85f + stats.speed * 0.15f)).coerceIn(0.12f, 0.88f)
-                            shipY = (shipY + dragAmount.y / size.height * (0.85f + stats.speed * 0.15f)).coerceIn(0.30f, 0.86f)
-                        }
-                    }
             ) {
                 CombatField(
                     shipX, shipY, enemyX, enemyY, enemyHp, projectiles, explosions
                 )
+
+                // Controle de voo dedicado: não bloqueia o botão de tiro.
+                Box(
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(16.dp)
+                        .size(112.dp)
+                        .clip(RoundedCornerShape(56.dp))
+                        .background(White.copy(alpha = 0.07f))
+                        .border(1.dp, NeonCyan.copy(alpha = 0.18f), RoundedCornerShape(56.dp))
+                        .pointerInput(Unit) {
+                            detectDragGestures { change, dragAmount ->
+                                change.consume()
+                                val sensitivity = 0.75f + stats.speed * 0.12f
+                                shipX = (shipX + dragAmount.x / size.width * sensitivity).coerceIn(0.12f, 0.88f)
+                                shipY = (shipY + dragAmount.y / size.height * sensitivity).coerceIn(0.38f, 0.86f)
+                            }
+                        },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        "PILOTAR",
+                        color = White.copy(alpha = 0.45f),
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.2.sp
+                    )
+                }
 
                 Text(
                     message,
@@ -453,11 +474,11 @@ private fun PrototypeGame(stats: ShipStats, mission: Mission, onBack: () -> Unit
                 )
 
                 Text(
-                    "ARRASTE PARA PILOTAR",
+                    "DESLIZE NO CONTROLE PARA PILOTAR",
                     color = White.copy(alpha = 0.35f),
                     fontSize = 9.sp,
-                    letterSpacing = 1.2.sp,
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp)
+                    letterSpacing = 1.0.sp,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 18.dp)
                 )
             }
 
