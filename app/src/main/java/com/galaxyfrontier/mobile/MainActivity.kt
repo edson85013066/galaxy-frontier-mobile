@@ -37,6 +37,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -57,7 +58,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
 
-private enum class Screen { MENU, GAME, SHIP, REWARD }
+private enum class Screen { MENU, GAME, SHIP, REWARD, GALAXY }
 
 private data class Projectile(var x: Float, var y: Float, val targetX: Float, val targetY: Float)
 private data class Explosion(val x: Float, val y: Float, val createdAt: Long)
@@ -94,10 +95,11 @@ private fun GalaxyFrontierApp() {
         label = "screen"
     ) { current ->
         when (current) {
-            Screen.MENU -> MainMenu(onPlay = { screen = Screen.GAME }, onShip = { screen = Screen.SHIP })
+            Screen.MENU -> MainMenu(onPlay = { screen = Screen.GAME }, onShip = { screen = Screen.SHIP }, onGalaxy = { screen = Screen.GALAXY })
             Screen.GAME -> PrototypeGame(stats = shipStats.value, onBack = { screen = Screen.MENU }, onCreditEarned = { credits += 25 }, onMissionComplete = { screen = Screen.REWARD })
             Screen.SHIP -> ShipScreen(stats = shipStats.value, credits = credits, onSpend = { credits = it }, onBack = { screen = Screen.MENU })
             Screen.REWARD -> MissionReward(onBack = { screen = Screen.MENU }, onReplay = { screen = Screen.GAME })
+            Screen.GALAXY -> GalaxyMap(onBack = { screen = Screen.MENU }, onPlay = { screen = Screen.GAME })
         }
     }
 }
@@ -148,7 +150,7 @@ private fun SpaceBackground(modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun MainMenu(onPlay: () -> Unit, onShip: () -> Unit) {
+private fun MainMenu(onPlay: () -> Unit, onShip: () -> Unit, onGalaxy: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         SpaceBackground()
 
@@ -199,6 +201,8 @@ private fun MainMenu(onPlay: () -> Unit, onShip: () -> Unit) {
                 primary = false,
                 onClick = onShip
             )
+            Spacer(Modifier.height(12.dp))
+            MenuButton(text = "GALÁXIA", icon = Icons.Default.Lock, primary = false, onClick = onGalaxy)
             Spacer(Modifier.height(12.dp))
             MenuButton(
                 text = "CONFIGURAÇÕES",
@@ -450,6 +454,50 @@ private fun PrototypeGame(stats: ShipStats, onBack: () -> Unit, onCreditEarned: 
                 }
                 HudChip("KILLS $kills • +$credits CR")
             }
+        }
+    }
+}
+
+@Composable
+private fun GalaxyMap(onBack: () -> Unit, onPlay: () -> Unit) {
+    Box(Modifier.fillMaxSize()) {
+        SpaceBackground()
+        Column(Modifier.fillMaxSize().padding(18.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.ArrowBack, contentDescription = "Voltar", tint = White,
+                    modifier = Modifier.size(42.dp).clip(RoundedCornerShape(14.dp)).background(White.copy(alpha = 0.07f))
+                        .clickable(onClick = onBack).padding(9.dp))
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text("GALÁXIA", color = White, fontSize = 20.sp, fontWeight = FontWeight.Black, letterSpacing = 2.sp)
+                    Text("MAPA DE FRONTEIRA", color = NeonCyan, fontSize = 10.sp, letterSpacing = 1.5.sp)
+                }
+            }
+            Spacer(Modifier.height(18.dp))
+            Box(Modifier.fillMaxWidth().weight(1f).clip(RoundedCornerShape(28.dp))
+                .background(White.copy(alpha = 0.045f)).border(1.dp, NeonCyan.copy(alpha = 0.12f), RoundedCornerShape(28.dp))) {
+                Canvas(Modifier.fillMaxSize()) {
+                    val nodes = listOf(Offset(.18f,.22f), Offset(.50f,.34f), Offset(.78f,.22f), Offset(.32f,.58f), Offset(.68f,.58f), Offset(.50f,.78f))
+                    val links = listOf(0 to 1, 1 to 2, 1 to 3, 1 to 4, 3 to 5, 4 to 5)
+                    links.forEach { (a,b) ->
+                        drawLine(White.copy(alpha=.10f), Offset(size.width*nodes[a].x,size.height*nodes[a].y), Offset(size.width*nodes[b].x,size.height*nodes[b].y), 2f)
+                    }
+                    nodes.forEachIndexed { i,n ->
+                        val p=Offset(size.width*n.x,size.height*n.y)
+                        val unlocked=i<2
+                        drawCircle(if(unlocked) NeonCyan else White.copy(alpha=.12f), if(i==1) 15f else 10f,p)
+                        if(i==1) drawCircle(NeonCyan.copy(alpha=.22f),28f,p,style=Stroke(2f))
+                    }
+                }
+                Column(Modifier.align(Alignment.BottomCenter).padding(18.dp), horizontalAlignment=Alignment.CenterHorizontally) {
+                    Text("SETOR 01 • ÓRBITA DESCONHECIDA", color=White, fontSize=12.sp, fontWeight=FontWeight.Bold)
+                    Text("MISSÃO DISPONÍVEL", color=NeonCyan, fontSize=10.sp, letterSpacing=1.4.sp)
+                    Spacer(Modifier.height(10.dp))
+                    MenuButton("ENTRAR NO SETOR", Icons.Default.PlayArrow, true, onPlay)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Text("Novos setores serão desbloqueados conforme sua exploração.", color=White.copy(alpha=.38f), fontSize=10.sp, textAlign=TextAlign.Center, modifier=Modifier.fillMaxWidth())
         }
     }
 }
